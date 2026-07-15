@@ -1,0 +1,30 @@
+# gradle
+.gradle/
+build/
+out/
+
+# eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# idea
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# vscode
+.vscode/
+
+# fabric
+run/
+
+# mod config / secrets
+config/dungeonstats.json
+config/frost.json
+*.env
+
+# local dev logs
+logs/

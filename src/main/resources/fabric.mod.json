@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "frost",
+  "version": "${version}",
+  "name": "Frost",
+  "description": "Tracks per-player secrets found, rooms cleared, and puzzles solved in Hypixel Skyblock dungeon runs, and prints an end-of-run summary.",
+  "authors": [
+    "Bdlt"
+  ],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "com.frost.Frost"
+      }
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*",
+    "minecraft": "~1.21.11",
+    "java": ">=21"
+  }
+}
