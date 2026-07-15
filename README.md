@@ -23,6 +23,43 @@ Built for Minecraft 1.21.11 (Fabric), in Kotlin.
 - **On-demand summary** - `/frost lastrun` re-prints the current/most recent run's
   breakdown at any time.
 
+## Recommended Values
+
+Here are the recommended values for room weights. Feel free to change these at your 
+desire, just note that doing so may not reflect accuracy. If not mentioned below, assume 
+1 for default value.
+
+**1x2 Rooms**
+- Crypt: 3
+- Gold: 2
+- Mage: 2
+- Pedestal: 2
+- Purple Flags: 2
+- Skull: 2
+**1x3 Rooms**
+- Slime: 3
+**1x4 Rooms**
+- Pipes: 2
+- Pit: 3
+- Waterfall: 2
+**2x2 Rooms**
+- Mines: 2
+**Misc. Rooms**
+- Blood: 0
+- Creeper Beams: 3
+- Entrance: 0
+- Fairy: 0
+- Higher Blaze: 4
+- Ice Fill: 7
+- Ice Path: 4
+- Lower Blaze: 4
+- New Trap: 2
+- Old Trap: 2
+- Quiz: 5
+- Teleport Maze: 3
+- Tic Tac Toe: 5
+- Water Board: 5
+
 ## Installation
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 1.21.11.
