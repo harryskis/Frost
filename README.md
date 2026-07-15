@@ -36,14 +36,18 @@ desire, just note that doing so may not reflect accuracy. If not mentioned below
 - Pedestal: 2
 - Purple Flags: 2
 - Skull: 2
+
 **1x3 Rooms**
 - Slime: 3
+
 **1x4 Rooms**
 - Pipes: 2
 - Pit: 3
 - Waterfall: 2
+
 **2x2 Rooms**
 - Mines: 2
+
 **Misc. Rooms**
 - Blood: 0
 - Creeper Beams: 3
