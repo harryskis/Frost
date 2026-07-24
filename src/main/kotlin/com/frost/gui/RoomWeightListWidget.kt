@@ -3,13 +3,13 @@ package com.frost.gui
 import com.frost.config.ModConfig
 import com.frost.dungeon.RoomDatabase
 import com.frost.util.TextUtils
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Element
-import net.minecraft.client.gui.Selectable
-import net.minecraft.client.gui.widget.ElementListWidget
-import net.minecraft.client.gui.widget.TextFieldWidget
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.gui.narration.NarratableEntry
+import net.minecraft.client.gui.components.ContainerObjectSelectionList
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.network.chat.Component
 
 /**
  * Scrollable list of every room in one shape category, each row showing the room's real
@@ -19,13 +19,13 @@ import net.minecraft.text.Text
  * this on close) - not on every keystroke, since a full category can be dozens of rows.
  */
 class RoomWeightListWidget(
-    client: MinecraftClient,
+    client: Minecraft,
     x: Int,
     width: Int,
     height: Int,
     y: Int,
     rooms: List<RoomDatabase.RoomInfo>,
-) : ElementListWidget<RoomWeightListWidget.RoomEntry>(client, width, height, y, 24) {
+) : ContainerObjectSelectionList<RoomWeightListWidget.RoomEntry>(client, width, height, y, 24) {
 
     init {
         // Each row's horizontal position is computed from the list's OWN x the moment
@@ -52,27 +52,28 @@ class RoomWeightListWidget(
      * whatever was previously configured (or the 1.0 default) untouched. */
     fun saveAll() {
         val updates = children().mapNotNull { entry ->
-            entry.weightField.text.trim().toDoubleOrNull()?.let { entry.room.name to it }
+            entry.weightField.value.trim().toDoubleOrNull()?.let { entry.room.name to it }
         }.toMap()
         if (updates.isNotEmpty()) ModConfig.setRoomWeights(updates)
     }
 
-    inner class RoomEntry(client: MinecraftClient, val room: RoomDatabase.RoomInfo) : Entry<RoomEntry>() {
-        val weightField = TextFieldWidget(client.textRenderer, 0, 0, 60, 20, Text.literal(room.name))
+    inner class RoomEntry(client: Minecraft, val room: RoomDatabase.RoomInfo) : Entry<RoomEntry>() {
+        val weightField = EditBox(minecraft.font, 0, 0, 60, 20, Component.literal(room.name))
 
         init {
             weightField.setMaxLength(8)
-            weightField.text = TextUtils.formatWeight(ModConfig.getRoomWeight(room.name))
-            // Loose numeric filter: digits, at most one leading '-' and one '.' - good
-            // enough to keep obviously-invalid input out without being a strict parser
-            // (saveAll re-parses properly and just skips anything that still isn't a
-            // valid number, e.g. a lone "-" or "." left mid-edit).
-            weightField.setTextPredicate { it.matches(Regex("-?\\d*\\.?\\d*")) }
+            weightField.value = TextUtils.formatWeight(ModConfig.getRoomWeight(room.name))
+            // Minecraft 26.x's EditBox dropped the input-predicate API this used to use to
+            // reject non-numeric keystrokes as they were typed. Nothing is lost in terms of
+            // correctness: saveAll() already re-parses every row with toDoubleOrNull() and
+            // silently skips anything that isn't a valid number, so junk input is ignored
+            // rather than saved - it's just caught at save time now instead of keypress
+            // time.
         }
 
-        override fun render(context: DrawContext, mouseX: Int, mouseY: Int, hovered: Boolean, tickDelta: Float) {
-            context.drawTextWithShadow(
-                client.textRenderer,
+        override fun extractContent(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, hovered: Boolean, tickDelta: Float) {
+            context.text(
+                minecraft.font,
                 room.name,
                 x,
                 y + (height - 8) / 2,
@@ -80,11 +81,11 @@ class RoomWeightListWidget(
             )
             weightField.x = x + contentWidth - weightField.width
             weightField.y = y + (height - weightField.height) / 2
-            weightField.render(context, mouseX, mouseY, tickDelta)
+            weightField.extractRenderState(context, mouseX, mouseY, tickDelta)
         }
 
-        override fun children(): MutableList<out Element> = mutableListOf(weightField)
+        override fun children(): MutableList<out GuiEventListener> = mutableListOf(weightField)
 
-        override fun selectableChildren(): MutableList<out Selectable> = mutableListOf(weightField)
+        override fun narratables(): MutableList<out NarratableEntry> = mutableListOf(weightField)
     }
 }

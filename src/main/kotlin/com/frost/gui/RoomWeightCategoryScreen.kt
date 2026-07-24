@@ -1,10 +1,10 @@
 package com.frost.gui
 
 import com.frost.dungeon.RoomDatabase
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.widget.ButtonWidget
-import net.minecraft.text.Text
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.components.Button
+import net.minecraft.network.chat.Component
 
 /**
  * One room category's worth of weight editing, opened from [RoomWeightsScreen] - a
@@ -13,7 +13,7 @@ import net.minecraft.text.Text
  * every row's edited weight to [com.frost.config.ModConfig] in one batch.
  */
 class RoomWeightCategoryScreen(private val parent: Screen?, private val category: String) :
-    Screen(Text.literal("Frost - ${RoomDatabase.categoryLabel(category)}")) {
+    Screen(Component.literal("Frost - ${RoomDatabase.categoryLabel(category)}")) {
 
     // Vanilla's list widget (EntryListWidget/ContainerWidget) already draws its own
     // bordered background texture across its full bounding box - confirmed as the actual
@@ -28,36 +28,36 @@ class RoomWeightCategoryScreen(private val parent: Screen?, private val category
     private lateinit var list: RoomWeightListWidget
 
     override fun init() {
-        val listTop = FrostTheme.sectionHeaderContentStartY(textRenderer) + 8
+        val listTop = FrostTheme.sectionHeaderContentStartY(font) + 8
         val listBottom = height - 32
 
         list = RoomWeightListWidget(
-            client!!,
+            minecraft!!,
             (width - cardWidth) / 2,
             cardWidth,
             listBottom - listTop,
             listTop,
             RoomDatabase.roomsInCategory(category),
         )
-        addDrawableChild(list)
+        addRenderableWidget(list)
 
-        addDrawableChild(
-            ButtonWidget.builder(Text.literal("Done")) { close() }
-                .dimensions((width - 150) / 2, height - 26, 150, 20)
+        addRenderableWidget(
+            Button.builder(Component.literal("Done")) { onClose() }
+                .bounds((width - 150) / 2, height - 26, 150, 20)
                 .build(),
         )
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         FrostTheme.drawBackground(context, width, height)
-        super.render(context, mouseX, mouseY, delta)
-        FrostTheme.drawSectionHeader(context, textRenderer, width, RoomDatabase.categoryLabel(category), mouseX, mouseY)
+        super.extractRenderState(context, mouseX, mouseY, delta)
+        FrostTheme.drawSectionHeader(context, font, width, RoomDatabase.categoryLabel(category), mouseX, mouseY)
     }
 
-    override fun close() {
+    override fun onClose() {
         list.saveAll()
-        client?.setScreen(parent)
+        minecraft?.setScreen(parent)
     }
 
-    override fun shouldPause(): Boolean = false
+    override fun isPauseScreen(): Boolean = false
 }

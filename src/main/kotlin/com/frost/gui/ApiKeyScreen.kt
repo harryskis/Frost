@@ -1,16 +1,16 @@
 package com.frost.gui
 
 import com.frost.config.ModConfig
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.widget.ButtonWidget
-import net.minecraft.client.gui.widget.TextFieldWidget
-import net.minecraft.text.Text
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.network.chat.Component
 
 /** Sets/updates the Hypixel API key (from developer.hypixel.net) from a text field,
  * instead of the /frost apikey <key> chat command. */
-class ApiKeyScreen(private val parent: Screen?) : Screen(Text.literal("Frost - API Key")) {
-    private lateinit var keyField: TextFieldWidget
+class ApiKeyScreen(private val parent: Screen?) : Screen(Component.literal("Frost - API Key")) {
+    private lateinit var keyField: EditBox
 
     private var panelX = 0
     private var panelY = 0
@@ -26,43 +26,43 @@ class ApiKeyScreen(private val parent: Screen?) : Screen(Text.literal("Frost - A
         panelWidth = fieldWidth + panelPadding * 2
         panelHeight = contentHeight + panelPadding * 2 + 15 // extra room for the hint label above the field
         panelX = (width - panelWidth) / 2
-        val wordmarkBottom = FrostTheme.sectionHeaderContentStartY(textRenderer)
+        val wordmarkBottom = FrostTheme.sectionHeaderContentStartY(font)
         panelY = wordmarkBottom + (height - wordmarkBottom - panelHeight) / 2
 
         val y = panelY + panelPadding + 15
-        keyField = TextFieldWidget(textRenderer, (width - fieldWidth) / 2, y, fieldWidth, fieldHeight, Text.literal("API key"))
+        keyField = EditBox(font, (width - fieldWidth) / 2, y, fieldWidth, fieldHeight, Component.literal("API key"))
         keyField.setMaxLength(64)
-        keyField.text = ModConfig.get().hypixelApiKey.orEmpty()
-        addDrawableChild(keyField)
+        keyField.value = ModConfig.get().hypixelApiKey.orEmpty()
+        addRenderableWidget(keyField)
         setInitialFocus(keyField)
 
-        addDrawableChild(
-            ButtonWidget.builder(Text.literal("Save")) { save() }
-                .dimensions((width - 200) / 2, y + 30, 95, 20)
+        addRenderableWidget(
+            Button.builder(Component.literal("Save")) { save() }
+                .bounds((width - 200) / 2, y + 30, 95, 20)
                 .build(),
         )
-        addDrawableChild(
-            ButtonWidget.builder(Text.literal("Back")) { close() }
-                .dimensions((width - 200) / 2 + 105, y + 30, 95, 20)
+        addRenderableWidget(
+            Button.builder(Component.literal("Back")) { onClose() }
+                .bounds((width - 200) / 2 + 105, y + 30, 95, 20)
                 .build(),
         )
     }
 
     private fun save() {
-        val key = keyField.text.trim()
+        val key = keyField.value.trim()
         if (key.isNotEmpty()) {
             ModConfig.setApiKey(key)
         }
-        close()
+        onClose()
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         FrostTheme.drawBackground(context, width, height)
         FrostTheme.drawPanel(context, panelX, panelY, panelWidth, panelHeight)
-        super.render(context, mouseX, mouseY, delta)
-        FrostTheme.drawSectionHeader(context, textRenderer, width, "API Key", mouseX, mouseY)
-        context.drawCenteredTextWithShadow(
-            textRenderer,
+        super.extractRenderState(context, mouseX, mouseY, delta)
+        FrostTheme.drawSectionHeader(context, font, width, "API Key", mouseX, mouseY)
+        context.centeredText(
+            font,
             "Hypixel API key (from developer.hypixel.net)",
             width / 2,
             keyField.y - 15,
@@ -70,9 +70,9 @@ class ApiKeyScreen(private val parent: Screen?) : Screen(Text.literal("Frost - A
         )
     }
 
-    override fun close() {
-        client?.setScreen(parent)
+    override fun onClose() {
+        minecraft?.setScreen(parent)
     }
 
-    override fun shouldPause(): Boolean = false
+    override fun isPauseScreen(): Boolean = false
 }

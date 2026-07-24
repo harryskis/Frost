@@ -1,11 +1,11 @@
 package com.frost.gui
 
 import com.frost.config.ModConfig
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.widget.ButtonWidget
-import net.minecraft.client.gui.widget.TextFieldWidget
-import net.minecraft.text.Text
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.network.chat.Component
 
 /**
  * Configures which chat channel (if any) the weighted-score line gets actually SENT to as
@@ -13,8 +13,8 @@ import net.minecraft.text.Text
  * displayed locally. Left blank, the announcement stays local-only: this mod never guesses
  * or defaults to broadcasting into whatever chat channel happens to be active.
  */
-class ChatChannelScreen(private val parent: Screen?) : Screen(Text.literal("Frost - Chat Channel")) {
-    private lateinit var channelField: TextFieldWidget
+class ChatChannelScreen(private val parent: Screen?) : Screen(Component.literal("Frost - Chat Channel")) {
+    private lateinit var channelField: EditBox
 
     private var panelX = 0
     private var panelY = 0
@@ -30,40 +30,40 @@ class ChatChannelScreen(private val parent: Screen?) : Screen(Text.literal("Fros
         panelWidth = fieldWidth + panelPadding * 2
         panelHeight = contentHeight + panelPadding * 2 + 15 // extra room for the hint label above the field
         panelX = (width - panelWidth) / 2
-        val wordmarkBottom = FrostTheme.sectionHeaderContentStartY(textRenderer)
+        val wordmarkBottom = FrostTheme.sectionHeaderContentStartY(font)
         panelY = wordmarkBottom + (height - wordmarkBottom - panelHeight) / 2
 
         val y = panelY + panelPadding + 15
-        channelField = TextFieldWidget(textRenderer, (width - fieldWidth) / 2, y, fieldWidth, fieldHeight, Text.literal("Channel"))
+        channelField = EditBox(font, (width - fieldWidth) / 2, y, fieldWidth, fieldHeight, Component.literal("Channel"))
         channelField.setMaxLength(16)
-        channelField.text = ModConfig.get().chatAnnounceChannel.orEmpty()
-        addDrawableChild(channelField)
+        channelField.value = ModConfig.get().chatAnnounceChannel.orEmpty()
+        addRenderableWidget(channelField)
         setInitialFocus(channelField)
 
-        addDrawableChild(
-            ButtonWidget.builder(Text.literal("Save")) { save() }
-                .dimensions((width - 200) / 2, y + 30, 95, 20)
+        addRenderableWidget(
+            Button.builder(Component.literal("Save")) { save() }
+                .bounds((width - 200) / 2, y + 30, 95, 20)
                 .build(),
         )
-        addDrawableChild(
-            ButtonWidget.builder(Text.literal("Back")) { close() }
-                .dimensions((width - 200) / 2 + 105, y + 30, 95, 20)
+        addRenderableWidget(
+            Button.builder(Component.literal("Back")) { onClose() }
+                .bounds((width - 200) / 2 + 105, y + 30, 95, 20)
                 .build(),
         )
     }
 
     private fun save() {
-        ModConfig.setChatAnnounceChannel(channelField.text.trim())
-        close()
+        ModConfig.setChatAnnounceChannel(channelField.value.trim())
+        onClose()
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         FrostTheme.drawBackground(context, width, height)
         FrostTheme.drawPanel(context, panelX, panelY, panelWidth, panelHeight)
-        super.render(context, mouseX, mouseY, delta)
-        FrostTheme.drawSectionHeader(context, textRenderer, width, "Chat Channel", mouseX, mouseY)
-        context.drawCenteredTextWithShadow(
-            textRenderer,
+        super.extractRenderState(context, mouseX, mouseY, delta)
+        FrostTheme.drawSectionHeader(context, font, width, "Chat Channel", mouseX, mouseY)
+        context.centeredText(
+            font,
             "/pc party, /ac all chat - blank = local only",
             width / 2,
             channelField.y - 15,
@@ -71,9 +71,9 @@ class ChatChannelScreen(private val parent: Screen?) : Screen(Text.literal("Fros
         )
     }
 
-    override fun close() {
-        client?.setScreen(parent)
+    override fun onClose() {
+        minecraft?.setScreen(parent)
     }
 
-    override fun shouldPause(): Boolean = false
+    override fun isPauseScreen(): Boolean = false
 }

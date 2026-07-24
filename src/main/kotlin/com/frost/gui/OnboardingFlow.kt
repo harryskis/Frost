@@ -1,6 +1,6 @@
 package com.frost.gui
 
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 /**
  * The first-launch, two-step onboarding shown the very first time a player joins a server
@@ -19,7 +19,7 @@ object OnboardingFlow {
             "obtain one, then paste it in the \"API Key\" menu within Frost. Remember to " +
             "update it every two days."
 
-    fun start(client: MinecraftClient) {
+    fun start(client: Minecraft) {
         client.setScreen(
             OnboardingMessageScreen("Welcome", WELCOME_MESSAGE, "Got it") {
                 client.setScreen(
