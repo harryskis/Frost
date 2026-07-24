@@ -29,7 +29,7 @@ dependencies {
     // ways - Yarn publishes 0 builds for any 26.x version, meta.fabricmc.net returns a
     // stub `intermediary:0.0.0`, and Odin (a live Hypixel Skyblock Kotlin mod on 26.1.2)
     // configures no mappings at all either. Adding officialMojangMappings() here fails
-    // outright with "Failed to find official mojang mappings for 26.2".
+    // outright with "Failed to find official mojang mappings".
     // Plain `implementation`, not `modImplementation` - with the game shipping
     // deobfuscated there is no remapping step, so Loom 1.16 no longer provides the `mod*`
     // configurations at all (Odin declares its Fabric deps the same way).
@@ -40,7 +40,7 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
-// Minecraft 26.2 requires Java 25 - Loom refuses to set the game up on anything older,
+// Minecraft 26.x requires Java 25 - Loom refuses to set the game up on anything older,
 // and Odin targets 25 the same way.
 java {
     sourceCompatibility = JavaVersion.VERSION_25

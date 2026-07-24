@@ -20,7 +20,7 @@ pluginManagement {
     }
 }
 
-// Minecraft 26.2 requires Java 25 (Loom refuses to set the game up on anything older).
+// Minecraft 26.x requires Java 25 (Loom refuses to set the game up on anything older).
 // This resolver lets Gradle fetch a matching JDK on demand for anyone building the repo
 // who doesn't already have one.
 plugins {

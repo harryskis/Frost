@@ -3,8 +3,8 @@ package com.frost.summary
 import com.frost.dungeon.GridPos
 import com.frost.session.DungeonSession
 import com.frost.session.PartyMember
-import net.minecraft.text.HoverEvent
-import net.minecraft.text.Text
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 
 class RunSummaryTest {
     /** Plain text of whatever the line's hover tooltip would show, or null if it has none. */
-    private fun hoverText(line: Text): String? {
+    private fun hoverText(line: Component): String? {
         val hover = line.style.hoverEvent ?: return null
         return (hover as HoverEvent.ShowText).value().string
     }

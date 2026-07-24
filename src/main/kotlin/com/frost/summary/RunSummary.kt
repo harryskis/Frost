@@ -4,9 +4,9 @@ import com.frost.dungeon.GridPos
 import com.frost.parsing.TabListParser
 import com.frost.session.DungeonSession
 import com.frost.util.TextUtils
-import net.minecraft.text.HoverEvent
-import net.minecraft.text.MutableText
-import net.minecraft.text.Text
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.MutableComponent
 
 /**
  * Formats the end-of-run breakdown of exactly which rooms each player cleared, plus their
@@ -28,10 +28,10 @@ object RunSummary {
      * label. Secrets show as "?" when the API snapshot never completed (no key configured,
      * request failed, etc.) rather than a misleading 0.
      */
-    fun formatRoomBreakdown(session: DungeonSession, roomNames: Map<GridPos, String>): List<Text> {
-        val lines = mutableListOf<Text>()
-        lines += Text.literal("§6§l-----------------------------------------------------")
-        lines += Text.literal("§e§lRooms Cleared §7- §f${session.floor ?: "?"}")
+    fun formatRoomBreakdown(session: DungeonSession, roomNames: Map<GridPos, String>): List<Component> {
+        val lines = mutableListOf<Component>()
+        lines += Component.literal("§6§l-----------------------------------------------------")
+        lines += Component.literal("§e§lRooms Cleared §7- §f${session.floor ?: "?"}")
 
         for (username in session.party.keys.sorted()) {
             val classLetter = session.playerClass[username]?.let { TabListParser.classLetter(it) }
@@ -48,14 +48,14 @@ object RunSummary {
             val total = solo.size + stack.size
             val secretsLabel = session.secretsFoundThisRun(username)?.toString() ?: "?"
 
-            val line: MutableText = Text.literal("§b$displayName§7: §f$total rooms§7, §f$secretsLabel secrets")
+            val line: MutableComponent = Component.literal("§b$displayName§7: §f$total rooms§7, §f$secretsLabel secrets")
             if (solo.isNotEmpty() || stack.isNotEmpty()) {
-                line.styled { it.withHoverEvent(HoverEvent.ShowText(roomHoverText(solo, stack))) }
+                line.withStyle { it.withHoverEvent(HoverEvent.ShowText(roomHoverText(solo, stack))) }
             }
             lines += line
         }
 
-        lines += Text.literal("§6§l-----------------------------------------------------")
+        lines += Component.literal("§6§l-----------------------------------------------------")
         return lines
     }
 
@@ -73,7 +73,7 @@ object RunSummary {
      * is meant to be sent as a real chat message (see Frost.kt's announceToChatChannel),
      * which can't carry §-formatting codes.
      */
-    fun formatWeightedScores(session: DungeonSession, roomNames: Map<GridPos, String>, weightOf: (String) -> Double): Text {
+    fun formatWeightedScores(session: DungeonSession, roomNames: Map<GridPos, String>, weightOf: (String) -> Double): Component {
         val parts = session.party.keys.sorted().map { username ->
             val classLetter = session.playerClass[username]?.let { TabListParser.classLetter(it) }
             val displayName = if (classLetter != null) "$username ($classLetter)" else username
@@ -86,17 +86,17 @@ object RunSummary {
 
             "$displayName: ${TextUtils.formatWeight(totalWeight)}"
         }
-        return Text.literal("[Frost] Contributions this run: " + parts.joinToString(" | "))
+        return Component.literal("[Frost] Contributions this run: " + parts.joinToString(" | "))
     }
 
-    private fun roomHoverText(solo: Set<String>, stack: Set<String>): Text {
-        val hover = Text.literal("")
+    private fun roomHoverText(solo: Set<String>, stack: Set<String>): Component {
+        val hover = Component.literal("")
         if (solo.isNotEmpty()) {
-            hover.append(Text.literal("§a§lSolo§r§7: §f" + solo.joinToString(", ")))
+            hover.append(Component.literal("§a§lSolo§r§7: §f" + solo.joinToString(", ")))
         }
         if (stack.isNotEmpty()) {
-            if (solo.isNotEmpty()) hover.append(Text.literal("\n"))
-            hover.append(Text.literal("§e§lStack§r§7: §f" + stack.joinToString(", ")))
+            if (solo.isNotEmpty()) hover.append(Component.literal("\n"))
+            hover.append(Component.literal("§e§lStack§r§7: §f" + stack.joinToString(", ")))
         }
         return hover
     }
