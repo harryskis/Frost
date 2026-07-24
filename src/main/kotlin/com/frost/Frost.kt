@@ -19,6 +19,8 @@ import com.frost.parsing.ScoreboardParser
 import com.frost.parsing.TabListParser
 import com.frost.session.DungeonSession
 import com.frost.session.PartyMember
+import com.frost.spotify.SpotifyApiClient
+import com.frost.spotify.SpotifyAuth
 import com.frost.summary.RunSummary
 import com.frost.util.TextUtils
 import com.mojang.brigadier.arguments.StringArgumentType
@@ -32,6 +34,7 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.client.network.AbstractClientPlayerEntity
 import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.client.network.PlayerListEntry
+import net.minecraft.client.util.InputUtil
 import net.minecraft.client.world.ClientWorld
 import net.minecraft.component.DataComponentTypes
 import net.minecraft.component.type.MapIdComponent
@@ -65,6 +68,11 @@ object Frost : ClientModInitializer {
     // of printing inline from finishSession(), so it lands after that flood has scrolled by.
     private var pendingBreakdownAtTick: Int? = null
     private const val BREAKDOWN_PRINT_DELAY_TICKS = 100 // ~5s at 20 ticks/sec
+
+    // Keycodes currently held down for an active custom keybind (see checkCustomKeybinds) -
+    // tracked so a command fires once on the tick the key first goes down, not once per
+    // tick for as long as it's held.
+    private val heldCustomKeybindKeys: MutableSet<Int> = mutableSetOf()
 
     // The weighted-score message runs on its own retry timeline, separate from the room
     // breakdown above - confirmed via live-run log analysis that Hypixel's API can return
@@ -231,9 +239,102 @@ object Frost : ClientModInitializer {
                                 }
                                 1
                             },
-                    ),
+                    )
+                    .then(registerSpotifyCommands()),
             )
         }
+    }
+
+    /**
+     * `/frost spotify ...` - Spotify Connect playback control. `next`/`previous`/
+     * `playpause` are plain commands rather than dedicated Minecraft keybinds so they slot
+     * directly into Frost's own generic "bind a key to a command" feature (see
+     * [ModConfig.customKeybinds] / KeybindsScreen) instead of needing a second, parallel
+     * keybind system.
+     */
+    private fun registerSpotifyCommands(): com.mojang.brigadier.builder.LiteralArgumentBuilder<net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource> =
+        ClientCommandManager.literal("spotify")
+            .executes { ctx ->
+                ctx.source.sendFeedback(Text.literal("§7/frost spotify: clientid <id> | login | status | next | previous | playpause"))
+                1
+            }
+            .then(
+                ClientCommandManager.literal("clientid")
+                    .then(
+                        ClientCommandManager.argument("id", StringArgumentType.word())
+                            .executes { ctx ->
+                                ModConfig.setSpotifyClientId(StringArgumentType.getString(ctx, "id"))
+                                ctx.source.sendFeedback(Text.literal("§aSpotify Client ID saved. Run /frost spotify login next."))
+                                1
+                            },
+                    ),
+            )
+            .then(
+                ClientCommandManager.literal("login")
+                    .executes {
+                        val clientId = ModConfig.get().spotifyClientId
+                        val player = MinecraftClient.getInstance().player
+                        if (clientId.isNullOrBlank()) {
+                            player?.sendMessage(Text.literal("§cSet a Client ID first: /frost spotify clientid <id>"), false)
+                            return@executes 1
+                        }
+                        player?.sendMessage(Text.literal("§7Opening your browser to connect Spotify..."), false)
+                        SpotifyAuth.startLogin(clientId) { success, message ->
+                            MinecraftClient.getInstance().execute {
+                                val color = if (success) "§a" else "§c"
+                                MinecraftClient.getInstance().player?.sendMessage(Text.literal("$color$message"), false)
+                            }
+                        }
+                        1
+                    },
+            )
+            .then(
+                ClientCommandManager.literal("status")
+                    .executes {
+                        if (!SpotifyApiClient.isLoggedIn()) {
+                            MinecraftClient.getInstance().player?.sendMessage(Text.literal("§cNot connected - run /frost spotify login"), false)
+                            return@executes 1
+                        }
+                        SpotifyApiClient.currentlyPlaying().thenAccept { result ->
+                            MinecraftClient.getInstance().execute { reportSpotifyResult(result, null) }
+                        }
+                        1
+                    },
+            )
+            .then(
+                ClientCommandManager.literal("next")
+                    .executes { runSpotifyCommand(SpotifyApiClient.skipNext(), "Skipped to next track.") },
+            )
+            .then(
+                ClientCommandManager.literal("previous")
+                    .executes { runSpotifyCommand(SpotifyApiClient.skipPrevious(), "Skipped to previous track.") },
+            )
+            .then(
+                ClientCommandManager.literal("playpause")
+                    .executes { runSpotifyCommand(SpotifyApiClient.togglePlayPause(), "Toggled playback.") },
+            )
+
+    /** Fires a Spotify action asynchronously and reports the result once it settles - always
+     * returns 1 immediately (brigadier commands can't stay "pending"), matching how the rest
+     * of Frost's async commands (e.g. apikey-gated fetches) never block the command thread. */
+    private fun runSpotifyCommand(future: CompletableFuture<SpotifyApiClient.Result>, successMessage: String): Int {
+        future.thenAccept { result ->
+            MinecraftClient.getInstance().execute { reportSpotifyResult(result, successMessage) }
+        }
+        return 1
+    }
+
+    private fun reportSpotifyResult(result: SpotifyApiClient.Result, successMessage: String?) {
+        val player = MinecraftClient.getInstance().player ?: return
+        val text = when (result) {
+            is SpotifyApiClient.Result.Success -> "§a${successMessage ?: "Done."}"
+            is SpotifyApiClient.Result.NowPlaying -> {
+                val state = if (result.isPlaying) "Playing" else "Paused"
+                "§7$state: §f${result.trackName} §7- §f${result.artistName}"
+            }
+            is SpotifyApiClient.Result.Error -> "§c${result.message}"
+        }
+        player.sendMessage(Text.literal(text), false)
     }
 
     private fun onGameMessage(message: Text) {
@@ -435,6 +536,8 @@ object Frost : ClientModInitializer {
                 runWeightAttempt(attempt)
             }
         }
+
+        checkCustomKeybinds(client)
 
         if (tickCounter % 5 != 0) return // poll ~4x/sec, no need for every tick
 
@@ -808,6 +911,59 @@ object Frost : ClientModInitializer {
         }
         val command = channel.removePrefix("/").trim()
         networkHandler.sendChatCommand("$command $plainText")
+    }
+
+    /**
+     * Polls every configured custom keybind (see KeybindsScreen) and fires whichever ones
+     * just went from up to down this tick. Skipped entirely while a GUI screen is open -
+     * including Frost's own menus - so typing a letter into a text field (or capturing a
+     * new bind) can never also fire an already-bound command for that same key.
+     */
+    private fun checkCustomKeybinds(client: MinecraftClient) {
+        if (client.currentScreen != null) return
+        val window = client.window ?: return
+        val keybinds = ModConfig.get().customKeybinds
+        if (keybinds.isEmpty()) {
+            if (heldCustomKeybindKeys.isNotEmpty()) heldCustomKeybindKeys.clear()
+            return
+        }
+
+        val boundKeyCodes = keybinds.mapNotNullTo(mutableSetOf()) { it.keyCode.takeIf { code -> code >= 0 } }
+        // A key that's no longer bound to anything shouldn't stay "held" forever - drop it
+        // so if it's later rebound to a new command, that command isn't blocked from firing
+        // just because the OLD command's key happened to still be physically down.
+        heldCustomKeybindKeys.retainAll(boundKeyCodes)
+
+        for (keybind in keybinds) {
+            if (keybind.keyCode < 0 || keybind.command.isBlank()) continue
+            val pressed = InputUtil.isKeyPressed(window, keybind.keyCode)
+            val wasHeld = keybind.keyCode in heldCustomKeybindKeys
+            if (pressed && !wasHeld) {
+                heldCustomKeybindKeys.add(keybind.keyCode)
+                runCustomKeybindCommand(keybind.command)
+            } else if (!pressed && wasHeld) {
+                heldCustomKeybindKeys.remove(keybind.keyCode)
+            }
+        }
+    }
+
+    /** Runs one custom keybind's command exactly as if the player had typed it: a leading
+     * "/" is a real command, anything else is sent as plain chat. Always a REAL send (no
+     * "local-only" fallback like announceToChatChannel) - the whole point of a keybind is
+     * to fire an actual in-game action, not print a local-only preview of one. */
+    private fun runCustomKeybindCommand(rawCommand: String) {
+        val command = rawCommand.trim()
+        if (command.isEmpty()) return
+        val networkHandler = MinecraftClient.getInstance().networkHandler
+        if (networkHandler == null) {
+            logger.warn("Could not run custom keybind - not connected. Command: $command")
+            return
+        }
+        if (command.startsWith("/")) {
+            networkHandler.sendChatCommand(command.removePrefix("/"))
+        } else {
+            networkHandler.sendChatMessage(command)
+        }
     }
 
     private fun printLines(lines: List<Text>) {

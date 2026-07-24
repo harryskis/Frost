@@ -15,6 +15,7 @@ class FrostScreen(private val parent: Screen?) : Screen(Text.literal("Frost")) {
         "API Key" to { p: Screen? -> ApiKeyScreen(p) },
         "Room Weights" to { p: Screen? -> RoomWeightsScreen(p) },
         "Chat Channel" to { p: Screen? -> ChatChannelScreen(p) },
+        "Keybinds" to { p: Screen? -> KeybindsScreen(p) },
     )
 
     private var panelX = 0

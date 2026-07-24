@@ -20,7 +20,28 @@ data class ModConfigData(
     // shown - it should only ever appear once, the very first time the player joins a
     // server with Frost installed, not on every join.
     var hasSeenWelcome: Boolean = false,
+    // User-defined "press this key, run this command" bindings - see KeybindsScreen.
+    var customKeybinds: MutableList<CustomKeybind> = mutableListOf(),
+    // Spotify app Client ID, from the player's own free Spotify Developer app - not
+    // secret on its own (it's a public identifier by design in PKCE flows), but stored
+    // here anyway since it's needed alongside the refresh token below.
+    var spotifyClientId: String? = null,
+    // Long-lived Spotify refresh token obtained via the PKCE authorization flow (see
+    // com.frost.spotify.SpotifyAuth). Unlike the short-lived access token (kept in memory
+    // only), this is the actual secret worth protecting - same treatment as the Hypixel
+    // API key above: local file only, already covered by .gitignore, never transmitted
+    // anywhere except to accounts.spotify.com/api/token.
+    var spotifyRefreshToken: String? = null,
 )
+
+/**
+ * One user-configured "press [keyCode], run [command]" binding. [keyCode] is a raw GLFW
+ * keysym (see [net.minecraft.client.util.InputUtil.Type.KEYSYM]); -1 means "not bound yet"
+ * (a freshly-added row before the player has pressed a key for it). [command] is sent
+ * exactly as typed - a leading "/" is treated as a real command (e.g. "/pc gg"), anything
+ * else as plain chat.
+ */
+data class CustomKeybind(var command: String = "", var keyCode: Int = -1)
 
 /**
  * Loads/saves [ModConfigData] as JSON under the Fabric config directory. The API key is
@@ -91,6 +112,26 @@ object ModConfig {
     fun markWelcomeSeen() {
         val config = get()
         config.hasSeenWelcome = true
+        save(config)
+    }
+
+    /** Replaces the whole custom-keybinds list and saves once - the Keybinds screen calls
+     * this on close with its full current list rather than saving per-edit. */
+    fun setCustomKeybinds(keybinds: List<CustomKeybind>) {
+        val config = get()
+        config.customKeybinds = keybinds.toMutableList()
+        save(config)
+    }
+
+    fun setSpotifyClientId(clientId: String) {
+        val config = get()
+        config.spotifyClientId = clientId
+        save(config)
+    }
+
+    fun setSpotifyRefreshToken(refreshToken: String?) {
+        val config = get()
+        config.spotifyRefreshToken = refreshToken
         save(config)
     }
 }

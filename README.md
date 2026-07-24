@@ -22,6 +22,9 @@ Built for Minecraft 1.21.11 (Fabric), in Kotlin.
   score to party chat, all chat, or keep it local-only.
 - **On-demand summary** - `/frost lastrun` re-prints the current/most recent run's
   breakdown at any time.
+- **Spotify playback control** (`/frost spotify`) - skip, go back, and play/pause Spotify
+  from in-game, bindable to any key via the Keybinds screen. Requires Spotify Premium (a
+  Spotify platform requirement for playback control, not a mod limitation).
 
 ## Installation
 
@@ -33,6 +36,36 @@ Built for Minecraft 1.21.11 (Fabric), in Kotlin.
    a personal key from [developer.hypixel.net](https://developer.hypixel.net) - required
    for secrets tracking. Hypixel API keys expire periodically; if secrets stop tracking,
    generate a new one.
+
+## Spotify Controls
+
+Spotify's playback API is only available to Premium accounts, and every app that talks to
+it - including this one - needs its own free Spotify Developer app registered by you. Frost
+never sees your Spotify password; it only ever gets a per-app access token via Spotify's
+standard PKCE login flow.
+
+1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), log
+   in, and click **Create app**.
+2. Give it any name/description. For **Redirect URI**, enter exactly:
+   `http://127.0.0.1:39562/callback`
+3. Save, open the app, and copy its **Client ID**.
+4. In-game: `/frost spotify clientid <your client id>`
+5. In-game: `/frost spotify login` - this opens your browser to Spotify's consent page.
+   Approve it, then return to Minecraft; the tab it opens can be closed once it says so.
+6. `/frost spotify status` confirms you're connected and shows what's currently playing.
+
+Once connected, `/frost spotify next`, `previous`, and `playpause` control playback on
+whatever device Spotify is currently active on. Bind them to keys via `/frost` ->
+"Keybinds" (or type them directly in chat) - there's no separate keybind system just for
+Spotify.
+
+| Command | Description |
+| --- | --- |
+| `/frost spotify clientid <id>` | Saves your Spotify app's Client ID. |
+| `/frost spotify login` | Starts the browser-based login/consent flow. |
+| `/frost spotify status` | Shows connection state and the current track. |
+| `/frost spotify next` / `previous` | Skips to the next/previous track. |
+| `/frost spotify playpause` | Toggles play/pause. |
 
 ## Building from source
 
@@ -56,6 +89,7 @@ Run the unit test suite (no Minecraft client required) with:
 | `/frost apikey <key>` | Sets your Hypixel API key directly from chat. |
 | `/frost roomweights` | Opens the room-weight configuration screen. |
 | `/frost lastrun` | Re-prints the current/most recent run's room breakdown. |
+| `/frost spotify ...` | Spotify playback control - see [Spotify Controls](#spotify-controls). |
 
 ## Credits
 
