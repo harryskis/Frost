@@ -1,11 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.3.21"
-    id("fabric-loom") version "1.17.13"
+    // Versions come from gradle.properties via settings.gradle.kts's pluginManagement.
+    id("net.fabricmc.fabric-loom")
+    kotlin("jvm")
     `maven-publish`
 }
 
 val minecraftVersion = project.property("minecraft_version") as String
-val yarnMappings = project.property("yarn_mappings") as String
 val loaderVersion = project.property("loader_version") as String
 val fabricVersion = project.property("fabric_version") as String
 val fabricKotlinVersion = project.property("fabric_kotlin_version") as String
@@ -24,21 +24,31 @@ repositories {
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraftVersion")
-    mappings("net.fabricmc:yarn:$yarnMappings:v2")
-    modImplementation("net.fabricmc:fabric-loader:$loaderVersion")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:$fabricVersion")
-    modImplementation("net.fabricmc:fabric-language-kotlin:$fabricKotlinVersion")
+    // NO mappings() call, deliberately. Minecraft 26.x ships deobfuscated, so there is
+    // nothing to map: the class names in the game jar ARE the real names. Confirmed three
+    // ways - Yarn publishes 0 builds for any 26.x version, meta.fabricmc.net returns a
+    // stub `intermediary:0.0.0`, and Odin (a live Hypixel Skyblock Kotlin mod on 26.1.2)
+    // configures no mappings at all either. Adding officialMojangMappings() here fails
+    // outright with "Failed to find official mojang mappings for 26.2".
+    // Plain `implementation`, not `modImplementation` - with the game shipping
+    // deobfuscated there is no remapping step, so Loom 1.16 no longer provides the `mod*`
+    // configurations at all (Odin declares its Fabric deps the same way).
+    implementation("net.fabricmc:fabric-loader:$loaderVersion")
+    implementation("net.fabricmc.fabric-api:fabric-api:$fabricVersion")
+    implementation("net.fabricmc:fabric-language-kotlin:$fabricKotlinVersion")
 
     testImplementation(kotlin("test"))
 }
 
+// Minecraft 26.2 requires Java 25 - Loom refuses to set the game up on anything older,
+// and Odin targets 25 the same way.
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
 }
 
 tasks.processResources {

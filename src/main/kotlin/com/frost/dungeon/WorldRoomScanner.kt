@@ -1,9 +1,10 @@
 package com.frost.dungeon
 
-import net.minecraft.block.Blocks
-import net.minecraft.client.world.ClientWorld
-import net.minecraft.util.math.BlockPos
-import net.minecraft.world.chunk.WorldChunk
+import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.core.BlockPos
+import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.chunk.LevelChunk
+import net.minecraft.world.level.chunk.status.ChunkStatus
 
 /**
  * Identifies a dungeon room's real Hypixel name by scanning one fixed block column and
@@ -47,7 +48,7 @@ object WorldRoomScanner {
      * same fingerprint [RoomDatabase] is keyed by, plus the highest non-air block found
      * (useful later for rotation/orientation work, currently unused).
      */
-    fun scanCore(chunk: WorldChunk, worldX: Int, worldZ: Int): Pair<Int, Int> {
+    fun scanCore(chunk: LevelChunk, worldX: Int, worldZ: Int): Pair<Int, Int> {
         val sb = StringBuilder(256)
         var foundHighest = false
         var highestBlock = 0
@@ -94,9 +95,11 @@ object WorldRoomScanner {
      * them wouldn't be scanned in time either. Polling every loaded-but-unidentified tile
      * catches both, at the cost of a cheap column read per unknown tile per tick.
      */
-    fun scanTileIfLoaded(world: ClientWorld, tile: GridPos): RoomDatabase.RoomInfo? {
+    fun scanTileIfLoaded(world: ClientLevel, tile: GridPos): RoomDatabase.RoomInfo? {
         val (scanX, scanZ) = tileToScanColumn(tile)
-        val chunk = world.chunkManager.getWorldChunk(scanX shr 4, scanZ shr 4) ?: return null
+        // load=false keeps this a pure "is it already loaded?" check - the whole point is
+        // to skip tiles whose chunks aren't client-side yet, not to force them in.
+        val chunk = world.chunkSource.getChunk(scanX shr 4, scanZ shr 4, ChunkStatus.FULL, false) ?: return null
         val (core, _) = scanCore(chunk, scanX, scanZ)
         return RoomDatabase.lookup(core)
     }
