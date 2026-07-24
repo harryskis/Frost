@@ -5,7 +5,7 @@ Catacombs dungeon runs - exactly which rooms each player cleared (solo or as par
 stack), secrets found, and a configurable weighted "contribution score" that accounts for
 some rooms being harder than others.
 
-Built for Minecraft 1.21.11 (Fabric), in Kotlin.
+Built for Minecraft 26.1.2 (Fabric), in Kotlin. Requires Java 25.
 
 ## Features
 
@@ -28,7 +28,7 @@ Built for Minecraft 1.21.11 (Fabric), in Kotlin.
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 1.21.11.
+1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 26.1.2, and make sure you are running Java 25 or newer (Minecraft 26.x requires it).
 2. Install [Fabric API](https://modrinth.com/mod/fabric-api) and
    [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin).
 3. Drop Frost's jar into your `mods` folder.

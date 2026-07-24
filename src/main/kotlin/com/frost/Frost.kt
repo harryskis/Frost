@@ -25,25 +25,25 @@ import com.frost.summary.RunSummary
 import com.frost.util.TextUtils
 import com.mojang.brigadier.arguments.StringArgumentType
 import net.fabricmc.api.ClientModInitializer
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.network.AbstractClientPlayerEntity
-import net.minecraft.client.network.ClientPlayerEntity
-import net.minecraft.client.network.PlayerListEntry
-import net.minecraft.client.util.InputUtil
-import net.minecraft.client.world.ClientWorld
-import net.minecraft.component.DataComponentTypes
-import net.minecraft.component.type.MapIdComponent
-import net.minecraft.item.Items
-import net.minecraft.item.map.MapDecorationTypes
-import net.minecraft.item.map.MapState
-import net.minecraft.scoreboard.Scoreboard
-import net.minecraft.scoreboard.ScoreboardDisplaySlot
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.player.AbstractClientPlayer
+import net.minecraft.client.player.LocalPlayer
+import net.minecraft.client.multiplayer.PlayerInfo
+import com.mojang.blaze3d.platform.InputConstants
+import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.core.component.DataComponents
+import net.minecraft.world.level.saveddata.maps.MapId
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.saveddata.maps.MapDecorationTypes
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData
+import net.minecraft.world.scores.Scoreboard
+import net.minecraft.world.scores.DisplaySlot
+import net.minecraft.network.chat.Component
 import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 
@@ -96,7 +96,7 @@ object Frost : ClientModInitializer {
     // fallback landed on the same person instead of each looking at its own room).
     private val puzzleRoomPositions: MutableSet<GridPos> = mutableSetOf()
     private val presenceCreditedPuzzleRooms: MutableSet<GridPos> = mutableSetOf()
-    private var cachedMapId: MapIdComponent? = null
+    private var cachedMapId: MapId? = null
     private var lastFloorNumber: Int? = null
 
     // Which room-grid tiles WorldRoomScanner has identified a real name for this run.
@@ -130,9 +130,9 @@ object Frost : ClientModInitializer {
      * specific teammate positionally, the same way reference dungeon mods (Odin,
      * Skyblocker) do it - see [DecorationPlayerMatcher].
      */
-    private fun currentPlayerTiles(localPlayer: ClientPlayerEntity, world: ClientWorld, mapState: MapState, floorNumber: Int?): Map<String, GridPos> {
+    private fun currentPlayerTiles(localPlayer: LocalPlayer, world: ClientLevel, mapState: MapItemSavedData, floorNumber: Int?): Map<String, GridPos> {
         val entityTiles = session.party.values.mapNotNull { member ->
-            val entity = world.players.firstOrNull { it.uuid == member.uuid } ?: return@mapNotNull null
+            val entity = world.players().firstOrNull { it.uuid == member.uuid } ?: return@mapNotNull null
             val pos = toRoomGridPos(entity.x, entity.z) ?: return@mapNotNull null
             member.username to pos
         }.toMap()
@@ -140,7 +140,8 @@ object Frost : ClientModInitializer {
         val decorations = mapState.decorations.map { deco ->
             val isSelf = deco.type().value() == MapDecorationTypes.FRAME.value()
             val pixelX = (deco.x().toInt() / 2.0 + 64).toInt()
-            val pixelZ = (deco.z().toInt() / 2.0 + 64).toInt()
+            // Mojang names the map decoration's second axis y(); Yarn called the same field z().
+            val pixelZ = (deco.y().toInt() / 2.0 + 64).toInt()
             DecorationPlayerMatcher.Decoration(isSelf, roomGrid.pixelToTile(pixelX, pixelZ, floorNumber))
         }
         val decorationTiles = DecorationPlayerMatcher.match(decorations, localPlayer.gameProfile.name, session.party.keys.toList())
@@ -167,7 +168,7 @@ object Frost : ClientModInitializer {
      * the screen even opens) so quitting out of it mid-flow can't cause it to reappear on
      * the next join.
      */
-    private fun onServerJoin(client: MinecraftClient) {
+    private fun onServerJoin(client: Minecraft) {
         if (ModConfig.get().hasSeenWelcome) return
         ModConfig.markWelcomeSeen()
         client.execute {
@@ -182,7 +183,7 @@ object Frost : ClientModInitializer {
     private fun registerCommands() {
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
-                ClientCommandManager.literal("frost")
+                ClientCommands.literal("frost")
                     .executes {
                         logger.info("/frost invoked - opening menu screen")
                         // Deferred to next tick: running a command from the chat input
@@ -191,7 +192,7 @@ object Frost : ClientModInitializer {
                         // opens our screen - immediately clobbers it back to closed in
                         // the same tick. Scheduling it via execute() runs it after that
                         // chat-closing step instead of racing it.
-                        val client = MinecraftClient.getInstance()
+                        val client = Minecraft.getInstance()
                         client.execute {
                             try {
                                 client.setScreen(FrostScreen(null))
@@ -202,19 +203,19 @@ object Frost : ClientModInitializer {
                         1
                     }
                     .then(
-                        ClientCommandManager.literal("apikey")
+                        ClientCommands.literal("apikey")
                             .then(
-                                ClientCommandManager.argument("key", StringArgumentType.word())
+                                ClientCommands.argument("key", StringArgumentType.word())
                                     .executes { ctx ->
                                         val key = StringArgumentType.getString(ctx, "key")
                                         ModConfig.setApiKey(key)
-                                        ctx.source.sendFeedback(Text.literal("§aHypixel API key saved."))
+                                        ctx.source.sendFeedback(Component.literal("§aHypixel API key saved."))
                                         1
                                     },
                             ),
                     )
                     .then(
-                        ClientCommandManager.literal("lastrun")
+                        ClientCommands.literal("lastrun")
                             .executes {
                                 // On-demand room breakdown for the current/most-recent run -
                                 // handy for checking mid-run without waiting for boss death.
@@ -225,11 +226,11 @@ object Frost : ClientModInitializer {
                             },
                     )
                     .then(
-                        ClientCommandManager.literal("roomweights")
+                        ClientCommands.literal("roomweights")
                             .executes {
                                 // Same next-tick deferral as the bare /frost command above -
                                 // avoids the chat-close race from opening a screen inline.
-                                val client = MinecraftClient.getInstance()
+                                val client = Minecraft.getInstance()
                                 client.execute {
                                     try {
                                         client.setScreen(RoomWeightsScreen(null))
@@ -253,64 +254,64 @@ object Frost : ClientModInitializer {
      * keybind system.
      */
     private fun registerSpotifyCommands(): com.mojang.brigadier.builder.LiteralArgumentBuilder<net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource> =
-        ClientCommandManager.literal("spotify")
+        ClientCommands.literal("spotify")
             .executes { ctx ->
-                ctx.source.sendFeedback(Text.literal("§7/frost spotify: clientid <id> | login | status | next | previous | playpause"))
+                ctx.source.sendFeedback(Component.literal("§7/frost spotify: clientid <id> | login | status | next | previous | playpause"))
                 1
             }
             .then(
-                ClientCommandManager.literal("clientid")
+                ClientCommands.literal("clientid")
                     .then(
-                        ClientCommandManager.argument("id", StringArgumentType.word())
+                        ClientCommands.argument("id", StringArgumentType.word())
                             .executes { ctx ->
                                 ModConfig.setSpotifyClientId(StringArgumentType.getString(ctx, "id"))
-                                ctx.source.sendFeedback(Text.literal("§aSpotify Client ID saved. Run /frost spotify login next."))
+                                ctx.source.sendFeedback(Component.literal("§aSpotify Client ID saved. Run /frost spotify login next."))
                                 1
                             },
                     ),
             )
             .then(
-                ClientCommandManager.literal("login")
+                ClientCommands.literal("login")
                     .executes {
                         val clientId = ModConfig.get().spotifyClientId
-                        val player = MinecraftClient.getInstance().player
+                        val player = Minecraft.getInstance().player
                         if (clientId.isNullOrBlank()) {
-                            player?.sendMessage(Text.literal("§cSet a Client ID first: /frost spotify clientid <id>"), false)
+                            player?.sendSystemMessage(Component.literal("§cSet a Client ID first: /frost spotify clientid <id>"))
                             return@executes 1
                         }
-                        player?.sendMessage(Text.literal("§7Opening your browser to connect Spotify..."), false)
+                        player?.sendSystemMessage(Component.literal("§7Opening your browser to connect Spotify..."))
                         SpotifyAuth.startLogin(clientId) { success, message ->
-                            MinecraftClient.getInstance().execute {
+                            Minecraft.getInstance().execute {
                                 val color = if (success) "§a" else "§c"
-                                MinecraftClient.getInstance().player?.sendMessage(Text.literal("$color$message"), false)
+                                Minecraft.getInstance().player?.sendSystemMessage(Component.literal("$color$message"))
                             }
                         }
                         1
                     },
             )
             .then(
-                ClientCommandManager.literal("status")
+                ClientCommands.literal("status")
                     .executes {
                         if (!SpotifyApiClient.isLoggedIn()) {
-                            MinecraftClient.getInstance().player?.sendMessage(Text.literal("§cNot connected - run /frost spotify login"), false)
+                            Minecraft.getInstance().player?.sendSystemMessage(Component.literal("§cNot connected - run /frost spotify login"))
                             return@executes 1
                         }
                         SpotifyApiClient.currentlyPlaying().thenAccept { result ->
-                            MinecraftClient.getInstance().execute { reportSpotifyResult(result, null) }
+                            Minecraft.getInstance().execute { reportSpotifyResult(result, null) }
                         }
                         1
                     },
             )
             .then(
-                ClientCommandManager.literal("next")
+                ClientCommands.literal("next")
                     .executes { runSpotifyCommand(SpotifyApiClient.skipNext(), "Skipped to next track.") },
             )
             .then(
-                ClientCommandManager.literal("previous")
+                ClientCommands.literal("previous")
                     .executes { runSpotifyCommand(SpotifyApiClient.skipPrevious(), "Skipped to previous track.") },
             )
             .then(
-                ClientCommandManager.literal("playpause")
+                ClientCommands.literal("playpause")
                     .executes { runSpotifyCommand(SpotifyApiClient.togglePlayPause(), "Toggled playback.") },
             )
 
@@ -319,13 +320,13 @@ object Frost : ClientModInitializer {
      * of Frost's async commands (e.g. apikey-gated fetches) never block the command thread. */
     private fun runSpotifyCommand(future: CompletableFuture<SpotifyApiClient.Result>, successMessage: String): Int {
         future.thenAccept { result ->
-            MinecraftClient.getInstance().execute { reportSpotifyResult(result, successMessage) }
+            Minecraft.getInstance().execute { reportSpotifyResult(result, successMessage) }
         }
         return 1
     }
 
     private fun reportSpotifyResult(result: SpotifyApiClient.Result, successMessage: String?) {
-        val player = MinecraftClient.getInstance().player ?: return
+        val player = Minecraft.getInstance().player ?: return
         val text = when (result) {
             is SpotifyApiClient.Result.Success -> "§a${successMessage ?: "Done."}"
             is SpotifyApiClient.Result.NowPlaying -> {
@@ -334,10 +335,10 @@ object Frost : ClientModInitializer {
             }
             is SpotifyApiClient.Result.Error -> "§c${result.message}"
         }
-        player.sendMessage(Text.literal(text), false)
+        player.sendSystemMessage(Component.literal(text))
     }
 
-    private fun onGameMessage(message: Text) {
+    private fun onGameMessage(message: Component) {
         val text = TextUtils.stripFormatting(message.string)
         if (ChatParser.isDungeonStartMessage(text)) {
             startNewSession()
@@ -355,7 +356,7 @@ object Frost : ClientModInitializer {
                 // name) and "<name> found a..." to everyone else - confirmed on a live run
                 // where the local player's own pickup came through as literally "You".
                 val quizFinder = if (quizFinderRaw == "You") {
-                    MinecraftClient.getInstance().player?.gameProfile?.name
+                    Minecraft.getInstance().player?.gameProfile?.name
                 } else {
                     quizFinderRaw
                 }
@@ -395,22 +396,22 @@ object Frost : ClientModInitializer {
         }
     }
 
-    // world.players isn't just the party: Hypixel renders some humanoid mobs (e.g.
+    // world.players() isn't just the party: Hypixel renders some humanoid mobs (e.g.
     // Floor 7's "Crypt Dreadlord"/"Crypt Souleater") using the Player entity type, so they
     // show up here too. Filter to entries that look like real Mojang accounts: a real
     // username never contains a space, and real (online-mode) accounts use version-4
     // UUIDs, which Hypixel's constructed mob/NPC profiles are unlikely to match. Not
     // bulletproof, but should clear out flavor-named mobs reliably.
-    private fun looksLikeRealPlayer(entity: AbstractClientPlayerEntity): Boolean {
+    private fun looksLikeRealPlayer(entity: AbstractClientPlayer): Boolean {
         val profile = entity.gameProfile
         return VALID_USERNAME.matches(profile.name) && profile.id.version() == 4
     }
 
     private fun startNewSession() {
-        val client = MinecraftClient.getInstance()
-        val world = client.world ?: return
+        val client = Minecraft.getInstance()
+        val world = client.level ?: return
 
-        val allWorldPlayers = world.players
+        val allWorldPlayers = world.players()
         val members = allWorldPlayers.filter(::looksLikeRealPlayer)
             .map { entity -> PartyMember(username = entity.gameProfile.name, uuid = entity.uuid) }
         val excluded = allWorldPlayers.size - members.size
@@ -481,7 +482,7 @@ object Frost : ClientModInitializer {
         }
         if (onAllComplete == null) return
         CompletableFuture.allOf(*futures.toTypedArray()).whenComplete { _, _ ->
-            MinecraftClient.getInstance().execute {
+            Minecraft.getInstance().execute {
                 if (session === forSession) onAllComplete()
             }
         }
@@ -500,8 +501,8 @@ object Frost : ClientModInitializer {
      * later found. Every newly-discovered member now gets their own baseline snapshot
      * taken right here, at the moment they're actually known.
      */
-    private fun discoverNewPartyMembers(world: ClientWorld) {
-        val newMembers = world.players
+    private fun discoverNewPartyMembers(world: ClientLevel) {
+        val newMembers = world.players()
             .filter(::looksLikeRealPlayer)
             .filter { it.gameProfile.name !in session.party }
             .map { entity -> PartyMember(username = entity.gameProfile.name, uuid = entity.uuid) }
@@ -512,7 +513,7 @@ object Frost : ClientModInitializer {
         snapshotSecrets(session.secretsBaseline, newMembers)
     }
 
-    private fun onTick(client: MinecraftClient) {
+    private fun onTick(client: Minecraft) {
         // Deliberately NOT gated on session.isActive(): that flips false the instant
         // "Cleared: 100%" fires, which would kill the scoreboard/tab-list diagnostic dumps
         // right as the boss fight starts - exactly the window needed to find a real
@@ -541,29 +542,29 @@ object Frost : ClientModInitializer {
 
         if (tickCounter % 5 != 0) return // poll ~4x/sec, no need for every tick
 
-        val handler = client.networkHandler ?: return
-        val world = client.world ?: return
+        val handler = client.connection ?: return
+        val world = client.level ?: return
         val player = client.player ?: return
 
         if (session.isActive()) discoverNewPartyMembers(world)
-        pollScoreboard(handler.scoreboard)
-        pollTabList(handler.listedPlayerListEntries)
+        pollScoreboard(handler.scoreboard())
+        pollTabList(handler.getListedOnlinePlayers())
         pollDungeonMap(player, world)
     }
 
     private fun pollScoreboard(scoreboard: Scoreboard) {
-        val objective = scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.SIDEBAR) ?: return
+        val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return
 
         // Hypixel doesn't populate ScoreboardEntry.display() - entry.name() just returns the
         // raw "owner" key (e.g. "§t"), a legacy trick where the real visible line text lives
         // on that score holder's Team prefix/suffix instead. Resolve through the team, falling
         // back to the raw entry name for anything that isn't team-backed.
-        val lines = scoreboard.getScoreboardEntries(objective).map { entry ->
-            val team = scoreboard.getScoreHolderTeam(entry.owner())
+        val lines = scoreboard.listPlayerScores(objective).map { entry ->
+            val team = scoreboard.getPlayersTeam(entry.owner())
             val raw = if (team != null) {
-                team.prefix.string + team.suffix.string
+                team.playerPrefix.string + team.playerSuffix.string
             } else {
-                entry.name().string
+                entry.ownerName().string
             }
             TextUtils.stripFormatting(raw)
         }
@@ -585,8 +586,8 @@ object Frost : ClientModInitializer {
         }
     }
 
-    private fun pollTabList(entries: Collection<PlayerListEntry>) {
-        val lines = entries.mapNotNull { entry -> entry.displayName?.string?.let(TextUtils::stripFormatting) }
+    private fun pollTabList(entries: Collection<PlayerInfo>) {
+        val lines = entries.mapNotNull { entry -> entry.tabListDisplayName?.string?.let(TextUtils::stripFormatting) }
 
         // Same idea as the scoreboard dump: the puzzle-line regex has never been confirmed
         // against a live tab list, so log the raw content periodically to check it.
@@ -622,9 +623,9 @@ object Frost : ClientModInitializer {
      * two simultaneous completions don't both get attributed via the same room.
      */
     private fun creditPuzzleByPresence() {
-        val world = MinecraftClient.getInstance().world ?: return
-        val localPlayer = MinecraftClient.getInstance().player ?: return
-        val mapState = cachedMapId?.let { world.getMapState(it) }
+        val world = Minecraft.getInstance().level ?: return
+        val localPlayer = Minecraft.getInstance().player ?: return
+        val mapState = cachedMapId?.let { world.getMapData(it) }
         val playerTiles = mapState?.let { currentPlayerTiles(localPlayer, world, it, lastFloorNumber) } ?: emptyMap()
         val unclaimedRooms = puzzleRoomPositions - presenceCreditedPuzzleRooms
 
@@ -684,16 +685,16 @@ object Frost : ClientModInitializer {
         }
     }
 
-    private fun pollDungeonMap(player: ClientPlayerEntity, world: ClientWorld) {
+    private fun pollDungeonMap(player: LocalPlayer, world: ClientLevel) {
         // The map item isn't reliably present in the inventory scan every tick (confirmed
         // on a live run: found once, then absent on every check afterward, even though the
         // user says it lives in a fixed hotbar slot). Rather than depend on finding the
-        // ItemStack every tick, cache its MapIdComponent the first time it IS found, then
+        // ItemStack every tick, cache its MapId the first time it IS found, then
         // query the world's map storage directly by ID from then on - vanilla keeps that
         // storage updated from server packets regardless of where the item currently is.
-        val mapStack = player.inventory.mainStacks.firstOrNull { it.item == Items.FILLED_MAP }
+        val mapStack = player.inventory.nonEquipmentItems.firstOrNull { it.item == Items.FILLED_MAP }
         if (mapStack != null) {
-            mapStack.get(DataComponentTypes.MAP_ID)?.let { foundId ->
+            mapStack.get(DataComponents.MAP_ID)?.let { foundId ->
                 if (foundId != cachedMapId) {
                     // If Hypixel periodically regenerates the map item with a new ID, this
                     // is where we'd see it - the room grid staying frozen on stale data
@@ -704,10 +705,10 @@ object Frost : ClientModInitializer {
             }
         }
 
-        val mapState = cachedMapId?.let { world.getMapState(it) }
+        val mapState = cachedMapId?.let { world.getMapData(it) }
         if (mapState == null) {
             if (tickCounter % 100 == 0) {
-                val inventoryDump = player.inventory.mainStacks.withIndex()
+                val inventoryDump = player.inventory.nonEquipmentItems.withIndex()
                     .filter { (_, stack) -> !stack.isEmpty }
                     .joinToString(", ") { (slot, stack) -> "[$slot]=${stack.item}" }
                 logger.info(
@@ -893,24 +894,24 @@ object Frost : ClientModInitializer {
      */
     private fun announceToChatChannel(plainText: String) {
         val channel = ModConfig.get().chatAnnounceChannel?.trim()
-        val player = MinecraftClient.getInstance().player
+        val player = Minecraft.getInstance().player
 
         if (channel.isNullOrBlank()) {
             if (player == null) {
                 logger.warn("Could not display in chat - no local player (disconnected?). Message: $plainText")
                 return
             }
-            player.sendMessage(Text.literal(plainText), false)
+            player.sendSystemMessage(Component.literal(plainText))
             return
         }
 
-        val networkHandler = MinecraftClient.getInstance().networkHandler
+        val networkHandler = Minecraft.getInstance().connection
         if (networkHandler == null) {
             logger.warn("Could not send to chat - not connected. Message: $plainText")
             return
         }
         val command = channel.removePrefix("/").trim()
-        networkHandler.sendChatCommand("$command $plainText")
+        networkHandler.sendCommand("$command $plainText")
     }
 
     /**
@@ -919,8 +920,8 @@ object Frost : ClientModInitializer {
      * including Frost's own menus - so typing a letter into a text field (or capturing a
      * new bind) can never also fire an already-bound command for that same key.
      */
-    private fun checkCustomKeybinds(client: MinecraftClient) {
-        if (client.currentScreen != null) return
+    private fun checkCustomKeybinds(client: Minecraft) {
+        if (client.screen != null) return
         val window = client.window ?: return
         val keybinds = ModConfig.get().customKeybinds
         if (keybinds.isEmpty()) {
@@ -936,7 +937,7 @@ object Frost : ClientModInitializer {
 
         for (keybind in keybinds) {
             if (keybind.keyCode < 0 || keybind.command.isBlank()) continue
-            val pressed = InputUtil.isKeyPressed(window, keybind.keyCode)
+            val pressed = InputConstants.isKeyDown(window, keybind.keyCode)
             val wasHeld = keybind.keyCode in heldCustomKeybindKeys
             if (pressed && !wasHeld) {
                 heldCustomKeybindKeys.add(keybind.keyCode)
@@ -954,26 +955,26 @@ object Frost : ClientModInitializer {
     private fun runCustomKeybindCommand(rawCommand: String) {
         val command = rawCommand.trim()
         if (command.isEmpty()) return
-        val networkHandler = MinecraftClient.getInstance().networkHandler
+        val networkHandler = Minecraft.getInstance().connection
         if (networkHandler == null) {
             logger.warn("Could not run custom keybind - not connected. Command: $command")
             return
         }
         if (command.startsWith("/")) {
-            networkHandler.sendChatCommand(command.removePrefix("/"))
+            networkHandler.sendCommand(command.removePrefix("/"))
         } else {
-            networkHandler.sendChatMessage(command)
+            networkHandler.sendChat(command)
         }
     }
 
-    private fun printLines(lines: List<Text>) {
-        val player = MinecraftClient.getInstance().player
+    private fun printLines(lines: List<Component>) {
+        val player = Minecraft.getInstance().player
         if (player == null) {
             logger.warn("Could not display in chat - no local player (disconnected?). See the log line above for the results.")
             return
         }
         for (line in lines) {
-            player.sendMessage(line, false)
+            player.sendSystemMessage(line)
         }
     }
 }
