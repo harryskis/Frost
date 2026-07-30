@@ -26,6 +26,47 @@ Built for Minecraft 26.1.2 (Fabric), in Kotlin. Requires Java 25.
   from in-game, bindable to any key via the Keybinds screen. Requires Spotify Premium (a
   Spotify platform requirement for playback control, not a mod limitation).
 
+## Recommended Values
+
+Here are the recommended values for room weights. Feel free to change these at your 
+desire, just note that doing so may not reflect accuracy. If not mentioned below, assume 
+1 for default value.
+
+**1x2 Rooms**
+- Crypt: 3
+- Gold: 2
+- Mage: 2
+- Pedestal: 2
+- Purple Flags: 2
+- Skull: 2
+
+**1x3 Rooms**
+- Slime: 3
+
+**1x4 Rooms**
+- Pipes: 2
+- Pit: 3
+- Waterfall: 2
+
+**2x2 Rooms**
+- Mines: 2
+
+**Misc. Rooms**
+- Blood: 0
+- Creeper Beams: 3
+- Entrance: 0
+- Fairy: 0
+- Higher Blaze: 4
+- Ice Fill: 7
+- Ice Path: 4
+- Lower Blaze: 4
+- New Trap: 2
+- Old Trap: 2
+- Quiz: 5
+- Teleport Maze: 3
+- Tic Tac Toe: 5
+- Water Board: 5
+
 ## Installation
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 26.1.2, and make sure you are running Java 25 or newer (Minecraft 26.x requires it).
