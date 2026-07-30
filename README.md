@@ -30,14 +30,15 @@ Built for Minecraft 26.1.2 (Fabric), in Kotlin. Requires Java 25.
 
 Here are the recommended values for room weights. Feel free to change these at your 
 desire, just note that doing so may not reflect accuracy. If not mentioned below, assume 
-1 for default value.
+1 for default value. These are also exactly what a fresh install starts with, and what
+`/frost roomweights reset` restores them to.
 
 **1x2 Rooms**
-- Crypt: 3
+- Bridges: 2
+- Crypt: 4
 - Gold: 2
 - Mage: 2
 - Pedestal: 2
-- Purple Flags: 2
 - Skull: 2
 
 **1x3 Rooms**
@@ -45,27 +46,34 @@ desire, just note that doing so may not reflect accuracy. If not mentioned below
 
 **1x4 Rooms**
 - Pipes: 2
-- Pit: 3
+- Pit: 4
 - Waterfall: 2
 
 **2x2 Rooms**
+- Atlas: 2
 - Mines: 2
+
+**L Rooms**
+- Altar: 3
+- Chambers: 2
+- Lava Ravine: 2
+- Layers: 3
+- Pirate: 2
+- Withermancer: 2
 
 **Misc. Rooms**
 - Blood: 0
-- Creeper Beams: 3
 - Entrance: 0
 - Fairy: 0
 - Higher Blaze: 4
-- Ice Fill: 7
+- Ice Fill: 9
 - Ice Path: 4
 - Lower Blaze: 4
 - New Trap: 2
-- Old Trap: 2
 - Quiz: 5
-- Teleport Maze: 3
+- Teleport Maze: 2
 - Tic Tac Toe: 5
-- Water Board: 5
+- Water Board: 6
 
 ## Installation
 
@@ -129,6 +137,7 @@ Run the unit test suite (no Minecraft client required) with:
 | `/frost` | Opens the main menu (API key, room weights, chat channel). |
 | `/frost apikey <key>` | Sets your Hypixel API key directly from chat. |
 | `/frost roomweights` | Opens the room-weight configuration screen. |
+| `/frost roomweights reset` | Resets room weights to the recommended values above. |
 | `/frost lastrun` | Re-prints the current/most recent run's room breakdown. |
 | `/frost spotify ...` | Spotify playback control - see [Spotify Controls](#spotify-controls). |
 
