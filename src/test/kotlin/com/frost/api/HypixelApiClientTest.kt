@@ -54,4 +54,83 @@ class HypixelApiClientTest {
 
         assertTrue(result is HypixelApiClient.Result.Error)
     }
+
+    @Test
+    fun `extracts a floor's S+ best time from dungeon_types`() {
+        val body = """
+            {
+              "success": true,
+              "profiles": [
+                { "selected": true, "members": { "$uuid": { "dungeons": { "dungeon_types": {
+                  "catacombs": { "fastest_time_s_plus": { "7": 238000 } }
+                } } } } }
+              ]
+            }
+        """.trimIndent()
+
+        val result = HypixelApiClient.parseDungeonBestTime(200, body, uuid, "catacombs", "7", "fastest_time_s_plus", "F7", "S+")
+
+        assertTrue(result is HypixelApiClient.BestTimeResult.Success)
+        assertEquals(238000L, result.elapsedMillis)
+    }
+
+    @Test
+    fun `extracts a master mode floor's completion best time`() {
+        val body = """
+            {
+              "success": true,
+              "profiles": [
+                { "selected": true, "members": { "$uuid": { "dungeons": { "dungeon_types": {
+                  "master_catacombs": { "fastest_time": { "5": 199000 } }
+                } } } } }
+              ]
+            }
+        """.trimIndent()
+
+        val result = HypixelApiClient.parseDungeonBestTime(200, body, uuid, "master_catacombs", "5", "fastest_time", "M5", "completion")
+
+        assertTrue(result is HypixelApiClient.BestTimeResult.Success)
+        assertEquals(199000L, result.elapsedMillis)
+    }
+
+    @Test
+    fun `reports no record when the floor has never been S+ cleared`() {
+        val body = """
+            {
+              "success": true,
+              "profiles": [
+                { "selected": true, "members": { "$uuid": { "dungeons": { "dungeon_types": {
+                  "catacombs": { "fastest_time_s_plus": { "6": 200000 } }
+                } } } } }
+              ]
+            }
+        """.trimIndent()
+
+        val result = HypixelApiClient.parseDungeonBestTime(200, body, uuid, "catacombs", "7", "fastest_time_s_plus", "F7", "S+")
+
+        assertTrue(result is HypixelApiClient.BestTimeResult.Error)
+        assertTrue(result.message.contains("F7"))
+    }
+
+    @Test
+    fun `reports an error for a non-200 status on the best-time lookup`() {
+        val result = HypixelApiClient.parseDungeonBestTime(403, "{}", uuid, "catacombs", "7", "fastest_time_s_plus", "F7", "S+")
+        assertTrue(result is HypixelApiClient.BestTimeResult.Error)
+    }
+
+    @Test
+    fun `reports an error when the best-time player isn't in the selected profile`() {
+        val body = """
+            {
+              "success": true,
+              "profiles": [
+                { "selected": true, "members": { "someone-else": { "dungeons": {} } } }
+              ]
+            }
+        """.trimIndent()
+
+        val result = HypixelApiClient.parseDungeonBestTime(200, body, uuid, "catacombs", "7", "fastest_time_s_plus", "F7", "S+")
+
+        assertTrue(result is HypixelApiClient.BestTimeResult.Error)
+    }
 }

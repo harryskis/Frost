@@ -5,12 +5,51 @@ import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 import java.nio.file.Path
 
+// The room-weight values a fresh install starts with, and what /frost roomweights reset
+// restores - the developer's own tuned values (rooms not listed here are neutral at 1.0,
+// same as any other unconfigured room - see ModConfig.getRoomWeight - so only entries that
+// actually differ from that neutral default need to be listed).
+val DEFAULT_ROOM_WEIGHTS: Map<String, Double> = mapOf(
+    "Slime" to 3.0,
+    "Altar" to 3.0,
+    "Chambers" to 2.0,
+    "Lava Ravine" to 2.0,
+    "Layers" to 3.0,
+    "Pirate" to 2.0,
+    "Withermancer" to 2.0,
+    "Bridges" to 2.0,
+    "Crypt" to 4.0,
+    "Gold" to 2.0,
+    "Mage" to 2.0,
+    "Pedestal" to 2.0,
+    "Skull" to 2.0,
+    "Pipes" to 2.0,
+    "Pit" to 4.0,
+    "Waterfall" to 2.0,
+    "Atlas" to 2.0,
+    "Mines" to 2.0,
+    "Blood" to 0.0,
+    "Entrance" to 0.0,
+    "Fairy" to 0.0,
+    "Higher Blaze" to 4.0,
+    "Ice Fill" to 9.0,
+    "Ice Path" to 4.0,
+    "Lower Blaze" to 4.0,
+    "New Trap" to 2.0,
+    "Quiz" to 5.0,
+    "Teleport Maze" to 2.0,
+    "Tic Tac Toe" to 5.0,
+    "Water Board" to 6.0,
+)
+
 data class ModConfigData(
     var hypixelApiKey: String? = null,
     // Per-room difficulty weight, keyed by the room's real name (e.g. "Crypt", "Ice
     // Fill") - a room absent from this map hasn't been customized yet and defaults to 1.0
     // (see ModConfig.getRoomWeight), not 0, so an unconfigured room still counts normally.
-    var roomWeights: MutableMap<String, Double> = mutableMapOf(),
+    // Starts pre-filled with DEFAULT_ROOM_WEIGHTS rather than empty, so a fresh install
+    // already reflects real tuning instead of every room counting equally.
+    var roomWeights: MutableMap<String, Double> = DEFAULT_ROOM_WEIGHTS.toMutableMap(),
     // The chat channel the weighted-score line gets actually SENT to (e.g. "/pc", "/ac"),
     // typed exactly as the player would type it themselves. Null/blank means "don't send
     // it to real chat" - the safe default until the player explicitly opts in, since
@@ -32,6 +71,42 @@ data class ModConfigData(
     // API key above: local file only, already covered by .gitignore, never transmitted
     // anywhere except to accounts.spotify.com/api/token.
     var spotifyRefreshToken: String? = null,
+    // User-defined friend tags for the Friends chat relay's tag tabs - see
+    // FriendTagsScreen. Tag-centric (name -> member usernames), not the other way around,
+    // to match how the screen edits it: create a tag, then assign friends to it. Renamed
+    // from the old per-friend map (friendTags: username -> tag names) when the UI moved
+    // from chat commands to this screen - old data is intentionally not migrated, a clean
+    // slate per the user's explicit request when this changed.
+    var friendTagList: MutableList<FriendTag> = mutableListOf(),
+    // Per-feature on/off state for the main menu's feature buttons (see
+    // com.frost.gui.FeatureButton) - left-click there toggles these, right-click opens the
+    // matching settings screen regardless of on/off state. All default false - a fresh
+    // install should do nothing until the player opts into each feature themselves, rather
+    // than a new user immediately having every feature active with no idea what's running.
+    var dungeonContributionsEnabled: Boolean = false,
+    var betterFriendsListEnabled: Boolean = false,
+    var keybindsEnabled: Boolean = false,
+    var spotifyLinkEnabled: Boolean = false,
+    // Separate from betterFriendsListEnabled - recruit state (floor + filled classes, the
+    // Party Finder auto-fill, and the [Recruit] button in /fl) is its own feature under the
+    // Dungeons tab, so it can be toggled independently of the rest of the friends list.
+    var recruitEnabled: Boolean = false,
+)
+
+/** One user-defined friend tag: [name] plus which friends are in it - see
+ * [com.frost.gui.FriendTagsScreen]. [members] can contain a blank/duplicate entry mid-edit
+ * (a freshly-added row nobody's typed a username into yet) - callers should ignore blanks
+ * rather than treating them as an error. [color] is a [net.minecraft.ChatFormatting] enum
+ * name (e.g. "AQUA"), or null for no override (default green) - stored as a plain string
+ * rather than the enum itself so this data class doesn't need a Minecraft import, matching
+ * the rest of this file's plain-JVM-testable config model. [keyCode] is a raw GLFW keysym
+ * (see [CustomKeybind]), -1 meaning "not bound" - hovering a friend's line in chat and
+ * pressing this key adds them to this tag directly, without opening any screen. */
+data class FriendTag(
+    var name: String = "",
+    val members: MutableList<String> = mutableListOf(),
+    var color: String? = null,
+    var keyCode: Int = -1,
 )
 
 /**
@@ -103,6 +178,15 @@ object ModConfig {
         save(config)
     }
 
+    /** /frost roomweights reset - replaces the whole map wholesale (not a merge, unlike
+     * [setRoomWeights]) with [DEFAULT_ROOM_WEIGHTS], so a room customized away from default
+     * and then removed from DEFAULT_ROOM_WEIGHTS in some future update doesn't linger. */
+    fun resetRoomWeightsToDefault() {
+        val config = get()
+        config.roomWeights = DEFAULT_ROOM_WEIGHTS.toMutableMap()
+        save(config)
+    }
+
     fun setChatAnnounceChannel(channel: String) {
         val config = get()
         config.chatAnnounceChannel = channel
@@ -112,6 +196,41 @@ object ModConfig {
     fun markWelcomeSeen() {
         val config = get()
         config.hasSeenWelcome = true
+        save(config)
+    }
+
+    fun isDungeonContributionsEnabled(): Boolean = get().dungeonContributionsEnabled
+    fun setDungeonContributionsEnabled(enabled: Boolean) {
+        val config = get()
+        config.dungeonContributionsEnabled = enabled
+        save(config)
+    }
+
+    fun isBetterFriendsListEnabled(): Boolean = get().betterFriendsListEnabled
+    fun setBetterFriendsListEnabled(enabled: Boolean) {
+        val config = get()
+        config.betterFriendsListEnabled = enabled
+        save(config)
+    }
+
+    fun isKeybindsEnabled(): Boolean = get().keybindsEnabled
+    fun setKeybindsEnabled(enabled: Boolean) {
+        val config = get()
+        config.keybindsEnabled = enabled
+        save(config)
+    }
+
+    fun isSpotifyLinkEnabled(): Boolean = get().spotifyLinkEnabled
+    fun setSpotifyLinkEnabled(enabled: Boolean) {
+        val config = get()
+        config.spotifyLinkEnabled = enabled
+        save(config)
+    }
+
+    fun isRecruitEnabled(): Boolean = get().recruitEnabled
+    fun setRecruitEnabled(enabled: Boolean) {
+        val config = get()
+        config.recruitEnabled = enabled
         save(config)
     }
 
@@ -133,5 +252,33 @@ object ModConfig {
         val config = get()
         config.spotifyRefreshToken = refreshToken
         save(config)
+    }
+
+    fun getFriendTags(): List<FriendTag> = get().friendTagList
+
+    /** Replaces the whole tag list in one save - FriendTagsScreen calls this on close with
+     * its full current state, matching setCustomKeybinds's save-once-on-close pattern.
+     * Blank-named rows (an added-but-never-named tag) are dropped rather than saved. */
+    fun setFriendTags(tags: List<FriendTag>) {
+        val config = get()
+        config.friendTagList = tags.filter { it.name.isNotBlank() }.toMutableList()
+        save(config)
+    }
+
+    /** Every (non-blank) tag name [username] belongs to - used when rendering their line in
+     * the friends chat relay. */
+    fun tagsForFriend(username: String): Set<String> =
+        get().friendTagList.filter { it.name.isNotBlank() && username in it.members }.map { it.name }.toSet()
+
+    /** Every defined tag's name, for building the Friends chat relay's tab row. */
+    fun allFriendTagNames(): List<String> = get().friendTagList.map { it.name }.filter { it.isNotBlank() }
+
+    /** Adds [username] to [tag]'s members (if not already present) and saves - [tag] is
+     * expected to be one of the live records from [getFriendTags], since the hotkey feature
+     * that calls this already has that exact reference in hand from its own polling. */
+    fun addMemberToTag(tag: FriendTag, username: String) {
+        if (username in tag.members) return
+        tag.members.add(username)
+        save(get())
     }
 }

@@ -1,9 +1,9 @@
 package com.frost.spotify
 
 import com.frost.config.ModConfig
+import com.frost.util.BrowserUtils
 import com.google.gson.JsonParser
 import com.sun.net.httpserver.HttpServer
-import java.awt.Desktop
 import java.net.InetSocketAddress
 import java.net.URI
 import java.net.URLDecoder
@@ -84,10 +84,13 @@ object SpotifyAuth {
     /**
      * Runs the full login flow: opens the system browser to Spotify's consent page, waits
      * for the loopback redirect (up to 3 minutes), exchanges the resulting code for tokens,
-     * and saves the refresh token to [ModConfig]. [onResult] fires exactly once with a
-     * user-facing outcome message - on whatever thread the async chain happens to land on,
-     * so callers that touch the game must hop back via `MinecraftClient.execute {}`
-     * themselves (see Frost.kt's command handlers).
+     * and saves the refresh token to [ModConfig]. [onResult] normally fires exactly once
+     * with a user-facing outcome message, but fires an EXTRA time first if the browser
+     * couldn't be opened automatically (see BrowserUtils.tryOpenBrowser) - that extra call is purely
+     * informational (the manual-URL instructions), not a final failure; the real outcome
+     * still follows once the callback resolves or the 3-minute window elapses. Runs on
+     * whatever thread the async chain happens to land on, so callers that touch the game
+     * must hop back via `Minecraft.execute {}` themselves (see Frost.kt's command handlers).
      */
     fun startLogin(clientId: String, onResult: (success: Boolean, message: String) -> Unit) {
         val verifier = generateCodeVerifier()
@@ -132,12 +135,14 @@ object SpotifyAuth {
         }
         server.start()
 
-        try {
-            Desktop.getDesktop().browse(URI.create(authorizeUrl))
-        } catch (e: Exception) {
-            server.stop(0)
-            onResult(false, "Could not open your browser automatically - open this URL manually: $authorizeUrl")
-            return
+        if (!BrowserUtils.tryOpenBrowser(authorizeUrl)) {
+            // Deliberately NOT stopping the server or returning here - that was the actual
+            // bug behind "I typed the link in manually and got an error": the callback
+            // server this URL redirects back to was already being torn down in the same
+            // breath as telling the player to visit it manually, so the manual path could
+            // never work either. The server keeps listening for the same 3-minute window
+            // either way; onResult can fire more than once (see the doc comment above).
+            onResult(false, "Could not open your browser automatically - open this link within 3 minutes to finish connecting: $authorizeUrl")
         }
 
         callbackFuture.orTimeout(3, TimeUnit.MINUTES).whenComplete { callbackResult, timeoutError ->

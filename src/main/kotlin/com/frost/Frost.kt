@@ -3,6 +3,7 @@ package com.frost
 import com.frost.api.HypixelApiClient
 import com.frost.config.ModConfig
 import com.frost.dungeon.DecorationPlayerMatcher
+import com.frost.dungeon.DungeonFloor
 import com.frost.dungeon.DungeonGrid
 import com.frost.dungeon.GridPos
 import com.frost.dungeon.RoomCreditTracker
@@ -10,8 +11,14 @@ import com.frost.dungeon.RoomDatabase
 import com.frost.dungeon.RoomGrid
 import com.frost.dungeon.RoomType
 import com.frost.dungeon.WorldRoomScanner
+import com.frost.friends.DungeonClass
+import com.frost.friends.FriendPresenceParser
+import com.frost.friends.FriendsChatRelay
+import com.frost.friends.PartyJoinParser
+import com.frost.gui.FriendTagsScreen
 import com.frost.gui.FrostScreen
 import com.frost.gui.OnboardingFlow
+import com.frost.gui.RecruitScreen
 import com.frost.gui.RoomWeightsScreen
 import com.frost.parsing.ChatParser
 import com.frost.parsing.PuzzleStatus
@@ -23,12 +30,16 @@ import com.frost.spotify.SpotifyApiClient
 import com.frost.spotify.SpotifyAuth
 import com.frost.summary.RunSummary
 import com.frost.util.TextUtils
+import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.context.CommandContext
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.player.AbstractClientPlayer
@@ -61,13 +72,16 @@ object Frost : ClientModInitializer {
     private val roomGrid = RoomGrid()
     private var tickCounter = 0
     private var endTriggered = false
-    // Printing the room breakdown the instant the boss dies lands in the exact same tick as
-    // Hypixel's own boss-victory chat flood (Master Mode score screen, "EXTRA STATS", a
-    // loot/xp line per party member) - confirmed on a live run that our message gets
-    // buried/scrolled past even though it was actually sent. Delay it a few seconds instead
-    // of printing inline from finishSession(), so it lands after that flood has scrolled by.
-    private var pendingBreakdownAtTick: Int? = null
-    private const val BREAKDOWN_PRINT_DELAY_TICKS = 100 // ~5s at 20 ticks/sec
+    // The room breakdown is no longer printed to chat automatically - it's only ever shown
+    // on demand via /frost lastrun. It's computed and cached here at the same moment the
+    // weighted-score line is (see runWeightAttempt), not any earlier: computing it right
+    // when the run ends would show secrets counts before Hypixel's API has actually caught
+    // up, the same staleness problem the weighted-score retry loop below exists to dodge.
+    // Deliberately NOT cleared when the next run starts (startNewSession) - it should keep
+    // showing the last COMPLETED run's breakdown for as long as the client stays open, right
+    // up until a new run actually finishes and overwrites it here, not just because another
+    // run began in the meantime.
+    private var lastRunBreakdownLines: List<Component>? = null
 
     // Keycodes currently held down for an active custom keybind (see checkCustomKeybinds) -
     // tracked so a command fires once on the tick the key first goes down, not once per
@@ -157,6 +171,21 @@ object Frost : ClientModInitializer {
         // "system/game" packets; listen on both so detection doesn't depend on which one.
         ClientReceiveMessageEvents.GAME.register { message, _ -> onGameMessage(message) }
         ClientReceiveMessageEvents.CHAT.register { message, _, _, _, _ -> onGameMessage(message) }
+        // ALLOW_* (not the plain observe-only GAME/CHAT above) so a recognized friends-list
+        // line can actually be suppressed from chat, not just observed - see
+        // FriendsChatRelay. COMMAND is what actually opens the capture window in the first
+        // place, by recognizing the player's own /fl or /friend list command as it's sent.
+        ClientSendMessageEvents.COMMAND.register { commandText -> FriendsChatRelay.onOutgoingCommand(commandText) }
+        ClientReceiveMessageEvents.ALLOW_GAME.register { message, _ ->
+            // Deliberately raw, not stripped - FriendsParser.parseMessage needs the original
+            // formatting codes to read each friend's Hypixel rank color off their username
+            // (see FriendEntry.nameColor); it strips per-line internally for the actual
+            // structural regex matching.
+            !FriendsChatRelay.handleIncomingLine(message.string)
+        }
+        ClientReceiveMessageEvents.ALLOW_CHAT.register { message, _, _, _, _ ->
+            !FriendsChatRelay.handleIncomingLine(message.string)
+        }
         ClientTickEvents.END_CLIENT_TICK.register { client -> onTick(client) }
         ClientPlayConnectionEvents.JOIN.register { _, _, client -> onServerJoin(client) }
         registerCommands()
@@ -209,7 +238,7 @@ object Frost : ClientModInitializer {
                                     .executes { ctx ->
                                         val key = StringArgumentType.getString(ctx, "key")
                                         ModConfig.setApiKey(key)
-                                        ctx.source.sendFeedback(Component.literal("§aHypixel API key saved."))
+                                        ctx.source.sendFeedback(Component.literal("${TextUtils.FROST_TAG}§aHypixel API key saved."))
                                         1
                                     },
                             ),
@@ -217,11 +246,13 @@ object Frost : ClientModInitializer {
                     .then(
                         ClientCommands.literal("lastrun")
                             .executes {
-                                // On-demand room breakdown for the current/most-recent run -
-                                // handy for checking mid-run without waiting for boss death.
-                                // Named "lastrun" (not "rooms") to avoid reading as a room-
-                                // weights shortcut alongside /frost roomweights.
-                                printRoomBreakdown()
+                                // Shows the room breakdown cached from the most recently
+                                // completed run (see computeAndCacheRoomBreakdown) - not a
+                                // live recalculation, so it reflects the same final secrets
+                                // counts as the announced weighted-score line. Named
+                                // "lastrun" (not "rooms") to avoid reading as a room-weights
+                                // shortcut alongside /frost roomweights.
+                                showLastRunBreakdown()
                                 1
                             },
                     )
@@ -239,11 +270,159 @@ object Frost : ClientModInitializer {
                                     }
                                 }
                                 1
+                            }
+                            .then(
+                                ClientCommands.literal("reset")
+                                    .executes {
+                                        ModConfig.resetRoomWeightsToDefault()
+                                        localMessage("§aRoom weights reset to their default values.")
+                                        1
+                                    },
+                            ),
+                    )
+                    .then(
+                        ClientCommands.literal("friends")
+                            .executes {
+                                // Equivalent to typing /fl yourself - see FriendsChatRelay.
+                                FriendsChatRelay.requestFriendsList()
+                                1
+                            }
+                            .then(
+                                ClientCommands.literal("refresh")
+                                    .executes {
+                                        localMessage("§7Scanning every friends-list page...")
+                                        FriendsChatRelay.refreshAll { count ->
+                                            localMessage("§aCached $count friend(s) across every page.")
+                                        }
+                                        1
+                                    },
+                            )
+                            .then(
+                                ClientCommands.literal("page")
+                                    .then(
+                                        ClientCommands.argument("n", IntegerArgumentType.integer(1))
+                                            .executes { ctx ->
+                                                // What the reconstructed next-page link
+                                                // actually clicks - see
+                                                // FriendsChatRelay.requestSpecificPage.
+                                                FriendsChatRelay.requestSpecificPage(IntegerArgumentType.getInteger(ctx, "n"))
+                                                1
+                                            },
+                                    ),
+                            ),
+                    )
+                    .then(
+                        ClientCommands.literal("friendstab")
+                            .then(
+                                ClientCommands.argument("tab", StringArgumentType.greedyString())
+                                    .executes { ctx ->
+                                        FriendsChatRelay.showTab(StringArgumentType.getString(ctx, "tab"))
+                                        1
+                                    },
+                            ),
+                    )
+                    .then(
+                        ClientCommands.literal("tags")
+                            .executes {
+                                // Same next-tick deferral as the other screen-opening
+                                // commands above - avoids the chat-close race from opening
+                                // a screen inline.
+                                val client = Minecraft.getInstance()
+                                client.execute {
+                                    try {
+                                        client.setScreen(FriendTagsScreen(null))
+                                    } catch (e: Exception) {
+                                        logger.error("Failed to open Tags screen", e)
+                                    }
+                                }
+                                1
                             },
+                    )
+                    .then(
+                        ClientCommands.literal("recruit")
+                            .executes {
+                                if (recruitDisabled()) return@executes 1
+                                // Same next-tick deferral as the other screen-opening
+                                // commands above - avoids the chat-close race from opening
+                                // a screen inline.
+                                val client = Minecraft.getInstance()
+                                client.execute {
+                                    try {
+                                        client.setScreen(RecruitScreen(null))
+                                    } catch (e: Exception) {
+                                        logger.error("Failed to open Recruit screen", e)
+                                    }
+                                }
+                                1
+                            }
+                            .then(
+                                ClientCommands.argument("floor", StringArgumentType.word())
+                                    .executes { ctx -> if (recruitDisabled()) 1 else setRecruitState(ctx, "") }
+                                    .then(
+                                        ClientCommands.argument("classes", StringArgumentType.greedyString())
+                                            .executes { ctx -> if (recruitDisabled()) 1 else setRecruitState(ctx, StringArgumentType.getString(ctx, "classes")) },
+                                    ),
+                            ),
                     )
                     .then(registerSpotifyCommands()),
             )
+            dispatcher.register(
+                ClientCommands.literal("pb")
+                    .then(
+                        ClientCommands.argument("username", StringArgumentType.word())
+                            .then(
+                                ClientCommands.argument("floor", StringArgumentType.word())
+                                    .executes { ctx -> runPbCommand(ctx, useSPlus = true) }
+                                    .then(
+                                        ClientCommands.literal("comp")
+                                            .executes { ctx -> runPbCommand(ctx, useSPlus = false) },
+                                    ),
+                            ),
+                    ),
+            )
         }
+    }
+
+    /**
+     * /pb <username> <floor> [comp] - looks up someone's Hypixel dungeon personal-best time
+     * for one floor (e.g. "f7" for Catacombs F7, "m5" for Master Mode M5 - see
+     * [DungeonFloor]), defaulting to their S+ score pb; "comp" shows their fastest
+     * completion at any score instead. Always local-only (see [localMessage]) - like
+     * /frost lastrun, this is a personal lookup, not something the whole party needs to see.
+     */
+    private fun runPbCommand(ctx: CommandContext<FabricClientCommandSource>, useSPlus: Boolean): Int {
+        val username = StringArgumentType.getString(ctx, "username")
+        val floor = DungeonFloor.parse(StringArgumentType.getString(ctx, "floor"))
+        if (floor == null) {
+            localMessage("§cInvalid floor - use f1-f7 or m1-m7 (e.g. f7 or m5).")
+            return 1
+        }
+        val apiKey = ModConfig.get().hypixelApiKey
+        if (apiKey.isNullOrBlank()) {
+            localMessage("§cSet a Hypixel API key first: /frost apikey <key>")
+            return 1
+        }
+
+        val recordField = if (useSPlus) "fastest_time_s_plus" else "fastest_time"
+        val recordLabel = if (useSPlus) "S+" else "completion"
+
+        HypixelApiClient.resolveUuidAsync(username).thenCompose { uuid ->
+            if (uuid == null) {
+                CompletableFuture.completedFuture(HypixelApiClient.BestTimeResult.Error("no Minecraft account found named '$username'"))
+            } else {
+                HypixelApiClient.fetchDungeonBestTimeAsync(uuid, apiKey, floor.dungeonType, floor.floorIndex, recordField, floor.label, recordLabel)
+            }
+        }.thenAccept { result ->
+            Minecraft.getInstance().execute {
+                val message = when (result) {
+                    is HypixelApiClient.BestTimeResult.Success ->
+                        "§b$username§7's §f${floor.label} $recordLabel §7pb is §f${TextUtils.formatDuration(result.elapsedMillis)}§7."
+                    is HypixelApiClient.BestTimeResult.Error -> "§c$username: ${result.message}"
+                }
+                localMessage(message)
+            }
+        }
+        return 1
     }
 
     /**
@@ -253,10 +432,26 @@ object Frost : ClientModInitializer {
      * [ModConfig.customKeybinds] / KeybindsScreen) instead of needing a second, parallel
      * keybind system.
      */
+    /** True (and no-op) if the Spotify Link feature is turned off (see MiscScreen's
+     * FeatureButton) - shown once here rather than duplicated in every subcommand below. */
+    private fun spotifyLinkDisabled(): Boolean {
+        if (ModConfig.isSpotifyLinkEnabled()) return false
+        localMessage("§cSpotify Link is turned off - enable it from /frost > Misc first.")
+        return true
+    }
+
+    /** True (and no-op) if the Recruit feature is turned off (see DungeonsScreen's
+     * FeatureButton) - shown once here rather than duplicated in every subcommand below. */
+    private fun recruitDisabled(): Boolean {
+        if (ModConfig.isRecruitEnabled()) return false
+        localMessage("§cRecruit is turned off - enable it from /frost > Dungeons first.")
+        return true
+    }
+
     private fun registerSpotifyCommands(): com.mojang.brigadier.builder.LiteralArgumentBuilder<net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource> =
         ClientCommands.literal("spotify")
             .executes { ctx ->
-                ctx.source.sendFeedback(Component.literal("§7/frost spotify: clientid <id> | login | status | next | previous | playpause"))
+                ctx.source.sendFeedback(Component.literal("${TextUtils.FROST_TAG}§7/frost spotify: clientid <id> | login | status | next | previous | playpause"))
                 1
             }
             .then(
@@ -264,8 +459,9 @@ object Frost : ClientModInitializer {
                     .then(
                         ClientCommands.argument("id", StringArgumentType.word())
                             .executes { ctx ->
+                                if (spotifyLinkDisabled()) return@executes 1
                                 ModConfig.setSpotifyClientId(StringArgumentType.getString(ctx, "id"))
-                                ctx.source.sendFeedback(Component.literal("§aSpotify Client ID saved. Run /frost spotify login next."))
+                                ctx.source.sendFeedback(Component.literal("${TextUtils.FROST_TAG}§aSpotify Client ID saved. Run /frost spotify login next."))
                                 1
                             },
                     ),
@@ -273,17 +469,18 @@ object Frost : ClientModInitializer {
             .then(
                 ClientCommands.literal("login")
                     .executes {
+                        if (spotifyLinkDisabled()) return@executes 1
                         val clientId = ModConfig.get().spotifyClientId
                         val player = Minecraft.getInstance().player
                         if (clientId.isNullOrBlank()) {
-                            player?.sendSystemMessage(Component.literal("§cSet a Client ID first: /frost spotify clientid <id>"))
+                            player?.sendSystemMessage(Component.literal("${TextUtils.FROST_TAG}§cSet a Client ID first: /frost spotify clientid <id>"))
                             return@executes 1
                         }
-                        player?.sendSystemMessage(Component.literal("§7Opening your browser to connect Spotify..."))
+                        player?.sendSystemMessage(Component.literal("${TextUtils.FROST_TAG}§7Opening your browser to connect Spotify..."))
                         SpotifyAuth.startLogin(clientId) { success, message ->
                             Minecraft.getInstance().execute {
                                 val color = if (success) "§a" else "§c"
-                                Minecraft.getInstance().player?.sendSystemMessage(Component.literal("$color$message"))
+                                Minecraft.getInstance().player?.sendSystemMessage(Component.literal("${TextUtils.FROST_TAG}$color$message"))
                             }
                         }
                         1
@@ -292,8 +489,9 @@ object Frost : ClientModInitializer {
             .then(
                 ClientCommands.literal("status")
                     .executes {
+                        if (spotifyLinkDisabled()) return@executes 1
                         if (!SpotifyApiClient.isLoggedIn()) {
-                            Minecraft.getInstance().player?.sendSystemMessage(Component.literal("§cNot connected - run /frost spotify login"))
+                            Minecraft.getInstance().player?.sendSystemMessage(Component.literal("${TextUtils.FROST_TAG}§cNot connected - run /frost spotify login"))
                             return@executes 1
                         }
                         SpotifyApiClient.currentlyPlaying().thenAccept { result ->
@@ -304,15 +502,15 @@ object Frost : ClientModInitializer {
             )
             .then(
                 ClientCommands.literal("next")
-                    .executes { runSpotifyCommand(SpotifyApiClient.skipNext(), "Skipped to next track.") },
+                    .executes { if (spotifyLinkDisabled()) 1 else runSpotifyCommand(SpotifyApiClient.skipNext(), "Skipped to next track.") },
             )
             .then(
                 ClientCommands.literal("previous")
-                    .executes { runSpotifyCommand(SpotifyApiClient.skipPrevious(), "Skipped to previous track.") },
+                    .executes { if (spotifyLinkDisabled()) 1 else runSpotifyCommand(SpotifyApiClient.skipPrevious(), "Skipped to previous track.") },
             )
             .then(
                 ClientCommands.literal("playpause")
-                    .executes { runSpotifyCommand(SpotifyApiClient.togglePlayPause(), "Toggled playback.") },
+                    .executes { if (spotifyLinkDisabled()) 1 else runSpotifyCommand(SpotifyApiClient.togglePlayPause(), "Toggled playback.") },
             )
 
     /** Fires a Spotify action asynchronously and reports the result once it settles - always
@@ -335,12 +533,27 @@ object Frost : ClientModInitializer {
             }
             is SpotifyApiClient.Result.Error -> "§c${result.message}"
         }
-        player.sendSystemMessage(Component.literal(text))
+        player.sendSystemMessage(Component.literal(TextUtils.FROST_TAG + text))
     }
 
     private fun onGameMessage(message: Component) {
         val text = TextUtils.stripFormatting(message.string)
-        if (ChatParser.isDungeonStartMessage(text)) {
+        // Checked unconditionally, independent of dungeon-session state: party finder joins
+        // happen before entering the dungeon, so this can't be gated on session.isActive().
+        // Recruit state is its own feature (separate from Better Friends List) - see
+        // recruitDisabled().
+        if (ModConfig.isRecruitEnabled()) {
+            PartyJoinParser.parse(text)?.let { join ->
+                FriendsChatRelay.markClassFilled(join.dungeonClass)
+                localMessage("§7Auto-filled §f${join.dungeonClass.abbreviation}§7 (${join.username} joined).")
+            }
+        }
+        if (ModConfig.isBetterFriendsListEnabled()) {
+            // Quiet, no chat output of its own - just keeps the friends cache's online/
+            // offline state fresh between /fl views (see FriendsChatRelay.handlePresenceChange).
+            FriendPresenceParser.parse(text)?.let { change -> FriendsChatRelay.handlePresenceChange(change) }
+        }
+        if (ChatParser.isDungeonStartMessage(text) && ModConfig.isDungeonContributionsEnabled()) {
             startNewSession()
         } else if (text.contains("Mort") && text.contains("Good luck", ignoreCase = true)) {
             // Regex didn't match but this looks like the start line - log the raw text so a
@@ -429,7 +642,6 @@ object Frost : ClientModInitializer {
         session = DungeonSession()
         roomCreditTracker = RoomCreditTracker()
         endTriggered = false
-        pendingBreakdownAtTick = null
         pendingWeightAttempt = null
         weightRetryAtTick = null
         puzzleRoomPositions.clear()
@@ -522,13 +734,6 @@ object Frost : ClientModInitializer {
         // when the session isn't active, so this is safe to leave unconditional.
         tickCounter++
 
-        pendingBreakdownAtTick?.let { targetTick ->
-            if (tickCounter >= targetTick) {
-                pendingBreakdownAtTick = null
-                printRoomBreakdown()
-            }
-        }
-
         pendingWeightAttempt?.let { attempt ->
             val fireAt = weightRetryAtTick
             if (fireAt == null || tickCounter >= fireAt) {
@@ -539,6 +744,15 @@ object Frost : ClientModInitializer {
         }
 
         checkCustomKeybinds(client)
+        FriendsChatRelay.tick()
+        FriendsChatRelay.checkTagHotkeys(client)
+
+        // Party Finder tooltips only need occasional polling (~1x/sec) since the listing
+        // doesn't change faster than a human can read it; also cheap-guarded by the screen
+        // check itself in scanPartyFinderScreen so this is nearly free when no screen is open.
+        if (tickCounter % 20 == 0) {
+            client.screen?.let { FriendsChatRelay.scanPartyFinderScreen(it) }
+        }
 
         if (tickCounter % 5 != 0) return // poll ~4x/sec, no need for every tick
 
@@ -548,7 +762,8 @@ object Frost : ClientModInitializer {
 
         if (session.isActive()) discoverNewPartyMembers(world)
         pollScoreboard(handler.scoreboard())
-        pollTabList(handler.getListedOnlinePlayers())
+        val tabListEntries = handler.getListedOnlinePlayers()
+        pollTabList(tabListEntries)
         pollDungeonMap(player, world)
     }
 
@@ -804,10 +1019,6 @@ object Frost : ClientModInitializer {
 
     private fun finishSession() {
         session.end()
-        // Room names were resolved live during the run into identifiedRooms, so there's no
-        // dedicated end-of-run wait for THEM - but don't print immediately: see
-        // BREAKDOWN_PRINT_DELAY_TICKS above for why this is deferred a few seconds.
-        pendingBreakdownAtTick = tickCounter + BREAKDOWN_PRINT_DELAY_TICKS
         // The weighted-score message runs on its own, separate retry timeline. Even attempt
         // 1 waits WEIGHT_FETCH_INITIAL_DELAY_TICKS rather than firing the instant the boss
         // dies - confirmed directly against the live API on a real run that Hypixel's own
@@ -819,12 +1030,29 @@ object Frost : ClientModInitializer {
         weightRetryAtTick = tickCounter + WEIGHT_FETCH_INITIAL_DELAY_TICKS
     }
 
-    private fun printRoomBreakdown() {
+    /** Computes the room breakdown and caches it for /frost lastrun - called from
+     * [runWeightAttempt] at the same moment the weighted-score line is (whether that
+     * resolves successfully or exhausts its retries), so the secrets counts shown here are
+     * exactly as fresh as the ones in the announced line, not calculated earlier off a
+     * still-stale API snapshot. */
+    private fun computeAndCacheRoomBreakdown() {
         val tileNames = identifiedRooms.mapValues { it.value.name }
         val lines = RunSummary.formatRoomBreakdown(session, tileNames)
         // Always log it too, in case the client can't display in chat (e.g. disconnected
         // in the window after the boss dies). getString() strips the hover tooltip.
         logger.info("Room breakdown: ${lines.joinToString(" | ") { it.string }}")
+        lastRunBreakdownLines = lines
+    }
+
+    /** /frost lastrun - shows the cached room breakdown from [computeAndCacheRoomBreakdown],
+     * locally only (never announced to the configured chat channel - this is a personal
+     * lookup, not a party-wide message). */
+    private fun showLastRunBreakdown() {
+        val lines = lastRunBreakdownLines
+        if (lines == null) {
+            localMessage("§7No completed run recorded yet.")
+            return
+        }
         printLines(lines)
     }
 
@@ -867,17 +1095,22 @@ object Frost : ClientModInitializer {
                 val tileNames = identifiedRooms.mapValues { it.value.name }
                 val weightedLine = RunSummary.formatWeightedScores(forSession, tileNames) { name -> ModConfig.getRoomWeight(name) }
                 logger.info("Weighted scores: ${weightedLine.string}")
-                announceToChatChannel(TextUtils.stripFormatting(weightedLine.string))
+                announceToChatChannel(weightedLine)
+                computeAndCacheRoomBreakdown()
                 return@snapshotSecrets
             }
             val reason = "$zeroOrUnknownCount party member(s) unknown/zero secrets, total $totalSecrets < minimum $minimumExpected for ${forSession.floor}"
             if (attempt >= WEIGHT_FETCH_MAX_ATTEMPTS) {
                 logger.warn("Weight calculation failed after $WEIGHT_FETCH_MAX_ATTEMPTS attempts - $reason.")
-                announceToChatChannel("[Frost] Hypixel API did not respond; could not calculate weights.")
+                // Player-side only: a failed calculation is diagnostic info for whoever's
+                // running the mod, not something the whole party chat needs to see.
+                localMessage("Hypixel API did not respond; could not calculate weights.")
+                computeAndCacheRoomBreakdown()
                 return@snapshotSecrets
             }
             logger.warn("Weight calculation attempt $attempt looks wrong ($reason) - retrying in 5s.")
-            announceToChatChannel("[Frost] Hypixel API did not respond, re-attempting weight calculation in 5 seconds.")
+            // Player-side only - see the failure branch above for why this isn't announced.
+            localMessage("Hypixel API did not respond, re-attempting weight calculation in 5 seconds.")
             pendingWeightAttempt = attempt + 1
             weightRetryAtTick = tickCounter + WEIGHT_FETCH_RETRY_DELAY_TICKS
         }
@@ -892,26 +1125,63 @@ object Frost : ClientModInitializer {
      * §-formatting codes, so callers pass already-plain text either way (a real send would
      * otherwise show raw codes as garbage characters to every other reader).
      */
-    private fun announceToChatChannel(plainText: String) {
+    /** [styledLine] is shown locally with its own formatting intact (including the aqua-
+     * bold "[Frost]" tag) when no channel is configured, but gets flattened to plain text
+     * via [TextUtils.stripFormatting] when it's actually sent through a real chat channel -
+     * real chat can't carry §-codes, so a real send has always needed the plain form
+     * regardless of this tag. */
+    private fun announceToChatChannel(styledLine: Component) {
         val channel = ModConfig.get().chatAnnounceChannel?.trim()
         val player = Minecraft.getInstance().player
 
         if (channel.isNullOrBlank()) {
             if (player == null) {
-                logger.warn("Could not display in chat - no local player (disconnected?). Message: $plainText")
+                logger.warn("Could not display in chat - no local player (disconnected?). Message: ${styledLine.string}")
                 return
             }
-            player.sendSystemMessage(Component.literal(plainText))
+            player.sendSystemMessage(styledLine)
             return
         }
 
         val networkHandler = Minecraft.getInstance().connection
         if (networkHandler == null) {
-            logger.warn("Could not send to chat - not connected. Message: $plainText")
+            logger.warn("Could not send to chat - not connected. Message: ${styledLine.string}")
             return
         }
         val command = channel.removePrefix("/").trim()
-        networkHandler.sendCommand("$command $plainText")
+        networkHandler.sendCommand("$command ${TextUtils.stripFormatting(styledLine.string)}")
+    }
+
+    /** Displays [text] to the local player only - never sent through the configured chat
+     * channel, regardless of what's set there. For diagnostic/status messages (retry
+     * notices, failures) that are only useful to whoever's running the mod, not the rest of
+     * the party. */
+    private fun localMessage(text: String) {
+        val player = Minecraft.getInstance().player
+        if (player == null) {
+            logger.warn("Could not display in chat - no local player (disconnected?). Message: $text")
+            return
+        }
+        player.sendSystemMessage(Component.literal(TextUtils.FROST_TAG + text))
+    }
+
+    /** /frost recruit <floor> [classes...] - sets the floor + already-filled classes used
+     * to build each friend's invite message (see FriendsChatRelay/PartyInviteMessage).
+     * [rawClasses] is comma/space-separated class names or abbreviations, either case. */
+    private fun setRecruitState(ctx: CommandContext<FabricClientCommandSource>, rawClasses: String): Int {
+        val floorRaw = StringArgumentType.getString(ctx, "floor")
+        val floor = DungeonFloor.parse(floorRaw)
+        if (floor == null) {
+            localMessage("§cInvalid floor - use f1-f7 or m1-m7 (e.g. f7 or m5).")
+            return 1
+        }
+        val (filled, unknown) = DungeonClass.parseList(rawClasses)
+        FriendsChatRelay.setRecruitState(floor.label, filled)
+        if (unknown.isNotEmpty()) {
+            localMessage("§eUnrecognized class(es) ignored: ${unknown.joinToString(", ")}")
+        }
+        localMessage("§a${FriendsChatRelay.recruitStateSummary()}")
+        return 1
     }
 
     /**
@@ -923,6 +1193,10 @@ object Frost : ClientModInitializer {
     private fun checkCustomKeybinds(client: Minecraft) {
         if (client.screen != null) return
         val window = client.window ?: return
+        if (!ModConfig.isKeybindsEnabled()) {
+            if (heldCustomKeybindKeys.isNotEmpty()) heldCustomKeybindKeys.clear()
+            return
+        }
         val keybinds = ModConfig.get().customKeybinds
         if (keybinds.isEmpty()) {
             if (heldCustomKeybindKeys.isNotEmpty()) heldCustomKeybindKeys.clear()

@@ -59,7 +59,7 @@ class ChatParserTest {
     fun `does not match unrelated blessing types - confirmed to cause massive over-crediting`() {
         assertNull(ChatParser.parseQuizBuffFinder("DUNGEON BUFF! ManSui found a Blessing of Wisdom V! (04s)"))
         assertNull(ChatParser.parseQuizBuffFinder("DUNGEON BUFF! You found a Blessing of Life I!"))
-        assertNull(ChatParser.parseQuizBuffFinder("DUNGEON BUFF! Ostad found a Blessing of Stone I!"))
+        assertNull(ChatParser.parseQuizBuffFinder("DUNGEON BUFF! Skyseeker found a Blessing of Stone I!"))
     }
 
     @Test

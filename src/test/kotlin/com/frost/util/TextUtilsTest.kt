@@ -21,4 +21,24 @@ class TextUtilsTest {
     fun `strips reset and bold codes too`() {
         assertEquals("Dungeon Stats", TextUtils.stripFormatting("§6§lDungeon Stats§r"))
     }
+
+    @Test
+    fun `formats a sub-minute duration`() {
+        assertEquals("0:45", TextUtils.formatDuration(45_000))
+    }
+
+    @Test
+    fun `formats a duration with zero-padded seconds`() {
+        assertEquals("3:58", TextUtils.formatDuration(238_000))
+    }
+
+    @Test
+    fun `pads single-digit seconds`() {
+        assertEquals("1:05", TextUtils.formatDuration(65_000))
+    }
+
+    @Test
+    fun `formats a duration past one hour with hours included`() {
+        assertEquals("1:01:05", TextUtils.formatDuration(3_665_000))
+    }
 }

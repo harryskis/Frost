@@ -9,13 +9,21 @@ import net.minecraft.network.chat.Component
  * The /frost command's main menu - just a vertical list of buttons, each opening a
  * sub-screen. Kept as a simple (label, screen-factory) list so adding another entry later
  * (the whole point of this menu existing) is a one-line change, not a layout rewrite.
+ *
+ * Every actual feature lives one level down, under Dungeons/Quality of Life/Misc, as a
+ * [FeatureButton] (left-click on/off, right-click for its settings) - Developer is the one
+ * exception, since API key entry isn't a togglable feature, just persistent config.
+ *
+ * Friends' roster/invite/recruit behavior stays chat-only (see
+ * com.frost.friends.FriendsChatRelay) - "Better Friends List" under Quality of Life only
+ * turns that on/off and links to its settings, it's not a chat replacement itself.
  */
 class FrostScreen(private val parent: Screen?) : Screen(Component.literal("Frost")) {
     private val entries: List<Pair<String, (Screen?) -> Screen>> = listOf(
-        "API Key" to { p: Screen? -> ApiKeyScreen(p) },
-        "Room Weights" to { p: Screen? -> RoomWeightsScreen(p) },
-        "Chat Channel" to { p: Screen? -> ChatChannelScreen(p) },
-        "Keybinds" to { p: Screen? -> KeybindsScreen(p) },
+        "Dungeons" to { p: Screen? -> DungeonsScreen(p) },
+        "Quality of Life" to { p: Screen? -> QualityOfLifeScreen(p) },
+        "Misc" to { p: Screen? -> MiscScreen(p) },
+        "Developer" to { p: Screen? -> ApiKeyScreen(p) },
     )
 
     private var panelX = 0

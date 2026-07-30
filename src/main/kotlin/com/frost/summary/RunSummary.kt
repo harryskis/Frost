@@ -31,7 +31,7 @@ object RunSummary {
     fun formatRoomBreakdown(session: DungeonSession, roomNames: Map<GridPos, String>): List<Component> {
         val lines = mutableListOf<Component>()
         lines += Component.literal("§6§l-----------------------------------------------------")
-        lines += Component.literal("§e§lRooms Cleared §7- §f${session.floor ?: "?"}")
+        lines += Component.literal("${TextUtils.FROST_TAG}§e§lRooms Cleared §7- §f${session.floor ?: "?"}")
 
         for (username in session.party.keys.sorted()) {
             val classLetter = session.playerClass[username]?.let { TabListParser.classLetter(it) }
@@ -61,7 +61,7 @@ object RunSummary {
 
     /**
      * A single compact line summarizing every party member's weighted score:
-     * "[Frost] Contributions this run: Name (Class): X | Name2 (Class2): Y | ...". A room
+     * "[Frost] Last run's contributions: Name (Class): X | Name2 (Class2): Y | ...". A room
      * credited to a player counts at its full configured weight regardless of solo/stack -
      * the same "no fractional credit" rule [formatRoomBreakdown]'s plain room count already
      * uses. [weightOf] resolves a room's real name to its configured weight (falling back
@@ -69,9 +69,11 @@ object RunSummary {
      * rather than read from ModConfig directly so this stays plain-JVM testable, same as
      * [roomNames]. Secrets found this run each add a flat 1 weight - a player whose secrets
      * snapshot never completed (shows "?" in [formatRoomBreakdown]) contributes 0 from
-     * secrets rather than making the whole score unknown. Plain, uncolored text - this line
-     * is meant to be sent as a real chat message (see Frost.kt's announceToChatChannel),
-     * which can't carry §-formatting codes.
+     * secrets rather than making the whole score unknown. Carries the same styled "[Frost]"
+     * tag every other local message from this mod uses - Frost.kt's announceToChatChannel
+     * strips it back to plain text on the rare path where this actually gets sent as a real
+     * chat message instead of just displayed locally, since real chat can't carry
+     * §-formatting codes.
      */
     fun formatWeightedScores(session: DungeonSession, roomNames: Map<GridPos, String>, weightOf: (String) -> Double): Component {
         val parts = session.party.keys.sorted().map { username ->
@@ -86,7 +88,7 @@ object RunSummary {
 
             "$displayName: ${TextUtils.formatWeight(totalWeight)}"
         }
-        return Component.literal("[Frost] Contributions this run: " + parts.joinToString(" | "))
+        return Component.literal("${TextUtils.FROST_TAG}Last run's contributions: " + parts.joinToString(" | "))
     }
 
     private fun roomHoverText(solo: Set<String>, stack: Set<String>): Component {

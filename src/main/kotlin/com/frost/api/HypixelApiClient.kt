@@ -11,11 +11,12 @@ import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
 /**
- * Minimal Hypixel public API client used only to snapshot a player's lifetime
- * `secrets_found` count at the start and end of a run (the diff is the run's secrets).
- * The Hypixel API has no live in-progress dungeon data, so this is the only piece of
- * this mod that talks to it. Requires a personal API key from developer.hypixel.net,
- * stored via [com.frost.config.ModConfig] — never hardcode or commit one.
+ * Minimal Hypixel public API client: snapshotting a player's lifetime `secrets_found` count
+ * at the start and end of a run (the diff is the run's secrets), plus on-demand lookups of a
+ * player's dungeon personal-best time for /pb. The Hypixel API has no live in-progress
+ * dungeon data, so this is the only piece of this mod that talks to it. Requires a personal
+ * API key from developer.hypixel.net, stored via [com.frost.config.ModConfig] — never
+ * hardcode or commit one.
  */
 object HypixelApiClient {
     private val logger = LoggerFactory.getLogger("frost.api")
@@ -83,6 +84,83 @@ object HypixelApiClient {
             return Result.Success(0)
         }
         return Result.Success(secretsField.asInt)
+    }
+
+    sealed class BestTimeResult {
+        data class Success(val elapsedMillis: Long) : BestTimeResult()
+        data class Error(val message: String) : BestTimeResult()
+    }
+
+    /** Fetches [uuid]'s personal-best time for one dungeon floor, for /pb. [dungeonType] is
+     * "catacombs" or "master_catacombs", [floorIndex] is the floor's key within that
+     * bucket's record maps ("1".."7"), and [recordField] is "fastest_time_s_plus" (default,
+     * S+ score) or "fastest_time" (any completion). [floorLabel]/[recordLabel] are only used
+     * to word the "no record yet" message. */
+    fun fetchDungeonBestTimeAsync(
+        uuid: UUID,
+        apiKey: String,
+        dungeonType: String,
+        floorIndex: String,
+        recordField: String,
+        floorLabel: String,
+        recordLabel: String,
+    ): CompletableFuture<BestTimeResult> {
+        val undashed = uuid.toString().replace("-", "")
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("https://api.hypixel.net/v2/skyblock/profiles?uuid=$undashed"))
+            .header("API-Key", apiKey)
+            .timeout(Duration.ofSeconds(10))
+            .GET()
+            .build()
+
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply { response ->
+                parseDungeonBestTime(response.statusCode(), response.body(), undashed, dungeonType, floorIndex, recordField, floorLabel, recordLabel)
+            }
+            .exceptionally { e -> BestTimeResult.Error(e.message ?: "request failed") }
+    }
+
+    internal fun parseDungeonBestTime(
+        statusCode: Int,
+        body: String,
+        undashedUuid: String,
+        dungeonType: String,
+        floorIndex: String,
+        recordField: String,
+        floorLabel: String,
+        recordLabel: String,
+    ): BestTimeResult {
+        if (statusCode != 200) return BestTimeResult.Error("HTTP $statusCode")
+        val json = try {
+            JsonParser.parseString(body).asJsonObject
+        } catch (e: Exception) {
+            return BestTimeResult.Error("invalid response body")
+        }
+
+        val success = json.get("success")?.asBoolean ?: false
+        if (!success) {
+            return BestTimeResult.Error(json.get("cause")?.asString ?: "request unsuccessful")
+        }
+
+        val profiles = json.getAsJsonArray("profiles")
+        if (profiles == null || profiles.size() == 0) return BestTimeResult.Error("no profiles found")
+
+        val selected = profiles.firstOrNull { it.asJsonObject.get("selected")?.asBoolean == true }?.asJsonObject
+            ?: return BestTimeResult.Error("no selected profile")
+
+        val member = selected.getAsJsonObject("members")?.getAsJsonObject(undashedUuid)
+            ?: return BestTimeResult.Error("player not found in selected profile (private API access?)")
+
+        val record = member.getAsJsonObject("dungeons")
+            ?.getAsJsonObject("dungeon_types")
+            ?.getAsJsonObject(dungeonType)
+            ?.getAsJsonObject(recordField)
+            ?.get(floorIndex)
+
+        if (record == null || !record.isJsonPrimitive) {
+            return BestTimeResult.Error("no $recordLabel record for $floorLabel")
+        }
+        return BestTimeResult.Success(record.asLong)
     }
 
     /** Fallback UUID lookup for a username not currently visible in the client's tab list. */

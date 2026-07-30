@@ -104,13 +104,13 @@ class RunSummaryTest {
     @Test
     fun `shows a player's class letter next to their name when known`() {
         val session = DungeonSession()
-        session.start(listOf(PartyMember("Bdlt"), PartyMember("Ostad")))
+        session.start(listOf(PartyMember("Bdlt"), PartyMember("Skyseeker")))
         session.playerClass["Bdlt"] = "Healer"
 
         val lines = RunSummary.formatRoomBreakdown(session, emptyMap())
 
         assertTrue(lines.any { it.string.contains("Bdlt (H)") })
-        assertTrue(lines.any { it.string.contains("Ostad") && !it.string.contains("Ostad (") })
+        assertTrue(lines.any { it.string.contains("Skyseeker") && !it.string.contains("Skyseeker (") })
     }
 
     @Test
@@ -158,7 +158,7 @@ class RunSummaryTest {
 
         val line = RunSummary.formatWeightedScores(session, emptyMap()) { 1.0 }
 
-        assertTrue(line.string.startsWith("[Frost] Contributions this run: "))
+        assertTrue(line.string.startsWith("§b§l[Frost]§r Last run's contributions: "))
     }
 
     @Test
