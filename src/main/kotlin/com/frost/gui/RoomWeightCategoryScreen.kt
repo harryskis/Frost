@@ -56,7 +56,7 @@ class RoomWeightCategoryScreen(private val parent: Screen?, private val category
 
     override fun onClose() {
         list.saveAll()
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

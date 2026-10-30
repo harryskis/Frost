@@ -58,7 +58,7 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Fr
 
     override fun onClose() {
         ModConfig.setCustomKeybinds(list.keybindsSnapshot())
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

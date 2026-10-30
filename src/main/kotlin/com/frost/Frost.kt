@@ -2,6 +2,7 @@ package com.frost
 
 import com.frost.api.HypixelApiClient
 import com.frost.config.ModConfig
+import com.frost.dungeon.AimAssist
 import com.frost.dungeon.DecorationPlayerMatcher
 import com.frost.dungeon.DungeonFloor
 import com.frost.dungeon.DungeonGrid
@@ -38,6 +39,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
@@ -50,6 +52,8 @@ import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.component.DataComponents
 import net.minecraft.world.level.saveddata.maps.MapId
 import net.minecraft.world.item.Items
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.component.DyedItemColor
 import net.minecraft.world.level.saveddata.maps.MapDecorationTypes
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData
 import net.minecraft.world.scores.Scoreboard
@@ -188,7 +192,33 @@ object Frost : ClientModInitializer {
         }
         ClientTickEvents.END_CLIENT_TICK.register { client -> onTick(client) }
         ClientPlayConnectionEvents.JOIN.register { _, _, client -> onServerJoin(client) }
+        // Always on, no feature toggle - just a small always-there tooltip addition, not a
+        // whole feature worth its own on/off switch.
+        ItemTooltipCallback.EVENT.register { stack, _, _, lines -> addDyedLeatherHexTooltip(stack, lines) }
+        AimAssist.register()
         registerCommands()
+    }
+
+    // Leather armor pieces (plus horse armor - also leather, also dyeable) that can carry a
+    // DataComponents.DYED_COLOR component. Deliberately NOT every dyeable item (e.g. wolf/cat
+    // collars use a plain DyeColor enum component instead, with no arbitrary RGB to show a
+    // hex code for).
+    private val DYEABLE_LEATHER_ITEMS = setOf(
+        Items.LEATHER_HELMET,
+        Items.LEATHER_CHESTPLATE,
+        Items.LEATHER_LEGGINGS,
+        Items.LEATHER_BOOTS,
+        Items.LEATHER_HORSE_ARMOR,
+    )
+
+    /** Appends a "Hex: #RRGGBB" tooltip line for any dyed leather armor (or horse armor) -
+     * vanilla shows that it's dyed but never the actual color value, which matters for
+     * matching an exact shade across pieces or copying someone else's dye recipe. */
+    private fun addDyedLeatherHexTooltip(stack: ItemStack, tooltip: MutableList<Component>) {
+        if (stack.item !in DYEABLE_LEATHER_ITEMS) return
+        val dyedColor = stack.get(DataComponents.DYED_COLOR) ?: return
+        val hex = "#%06X".format(dyedColor.rgb() and 0xFFFFFF)
+        tooltip.add(Component.literal("§7Hex: §f$hex"))
     }
 
     /**
@@ -224,7 +254,7 @@ object Frost : ClientModInitializer {
                         val client = Minecraft.getInstance()
                         client.execute {
                             try {
-                                client.setScreen(FrostScreen(null))
+                                client.gui.setScreen(FrostScreen(null))
                             } catch (e: Exception) {
                                 logger.error("Failed to open Frost menu screen", e)
                             }
@@ -264,7 +294,7 @@ object Frost : ClientModInitializer {
                                 val client = Minecraft.getInstance()
                                 client.execute {
                                     try {
-                                        client.setScreen(RoomWeightsScreen(null))
+                                        client.gui.setScreen(RoomWeightsScreen(null))
                                     } catch (e: Exception) {
                                         logger.error("Failed to open Room Weights screen", e)
                                     }
@@ -330,7 +360,7 @@ object Frost : ClientModInitializer {
                                 val client = Minecraft.getInstance()
                                 client.execute {
                                     try {
-                                        client.setScreen(FriendTagsScreen(null))
+                                        client.gui.setScreen(FriendTagsScreen(null))
                                     } catch (e: Exception) {
                                         logger.error("Failed to open Tags screen", e)
                                     }
@@ -348,7 +378,7 @@ object Frost : ClientModInitializer {
                                 val client = Minecraft.getInstance()
                                 client.execute {
                                     try {
-                                        client.setScreen(RecruitScreen(null))
+                                        client.gui.setScreen(RecruitScreen(null))
                                     } catch (e: Exception) {
                                         logger.error("Failed to open Recruit screen", e)
                                     }
@@ -362,6 +392,19 @@ object Frost : ClientModInitializer {
                                         ClientCommands.argument("classes", StringArgumentType.greedyString())
                                             .executes { ctx -> if (recruitDisabled()) 1 else setRecruitState(ctx, StringArgumentType.getString(ctx, "classes")) },
                                     ),
+                            ),
+                    )
+                    .then(
+                        ClientCommands.literal("aim")
+                            .then(
+                                ClientCommands.literal("edit")
+                                    .executes {
+                                        // Same toggle as the Edit button on the Aim Assist
+                                        // screen - just reachable without opening the menu.
+                                        AimAssist.editMode = !AimAssist.editMode
+                                        localMessage(if (AimAssist.editMode) "§aAim Assist edit mode on." else "§7Aim Assist edit mode off.")
+                                        1
+                                    },
                             ),
                     )
                     .then(registerSpotifyCommands()),
@@ -751,7 +794,7 @@ object Frost : ClientModInitializer {
         // doesn't change faster than a human can read it; also cheap-guarded by the screen
         // check itself in scanPartyFinderScreen so this is nearly free when no screen is open.
         if (tickCounter % 20 == 0) {
-            client.screen?.let { FriendsChatRelay.scanPartyFinderScreen(it) }
+            client.gui.screen()?.let { FriendsChatRelay.scanPartyFinderScreen(it) }
         }
 
         if (tickCounter % 5 != 0) return // poll ~4x/sec, no need for every tick
@@ -1191,8 +1234,7 @@ object Frost : ClientModInitializer {
      * new bind) can never also fire an already-bound command for that same key.
      */
     private fun checkCustomKeybinds(client: Minecraft) {
-        if (client.screen != null) return
-        val window = client.window ?: return
+        if (client.gui.screen() != null) return
         if (!ModConfig.isKeybindsEnabled()) {
             if (heldCustomKeybindKeys.isNotEmpty()) heldCustomKeybindKeys.clear()
             return
@@ -1211,7 +1253,7 @@ object Frost : ClientModInitializer {
 
         for (keybind in keybinds) {
             if (keybind.keyCode < 0 || keybind.command.isBlank()) continue
-            val pressed = InputConstants.isKeyDown(window, keybind.keyCode)
+            val pressed = InputConstants.isKeyDown(keybind.keyCode)
             val wasHeld = keybind.keyCode in heldCustomKeybindKeys
             if (pressed && !wasHeld) {
                 heldCustomKeybindKeys.add(keybind.keyCode)

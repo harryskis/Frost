@@ -56,7 +56,7 @@ class FriendTagMembersScreen(private val parent: Screen, private val tag: Friend
     override fun onClose() {
         tag.members.clear()
         tag.members.addAll(list.membersSnapshot())
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

@@ -40,7 +40,7 @@ class QualityOfLifeScreen(private val parent: Screen?) : Screen(Component.litera
                 "Better Friends List",
                 ModConfig.isBetterFriendsListEnabled(),
                 onToggle = { ModConfig.setBetterFriendsListEnabled(it) },
-                onOpenSettings = { minecraft?.setScreen(BetterFriendsListScreen(this)) },
+                onOpenSettings = { minecraft.gui.setScreen(BetterFriendsListScreen(this)) },
             ),
         )
         y += buttonHeight + spacing
@@ -51,7 +51,7 @@ class QualityOfLifeScreen(private val parent: Screen?) : Screen(Component.litera
                 "Keybinds",
                 ModConfig.isKeybindsEnabled(),
                 onToggle = { ModConfig.setKeybindsEnabled(it) },
-                onOpenSettings = { minecraft?.setScreen(KeybindsScreen(this)) },
+                onOpenSettings = { minecraft.gui.setScreen(KeybindsScreen(this)) },
             ),
         )
         y += buttonHeight + spacing
@@ -71,7 +71,7 @@ class QualityOfLifeScreen(private val parent: Screen?) : Screen(Component.litera
     }
 
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

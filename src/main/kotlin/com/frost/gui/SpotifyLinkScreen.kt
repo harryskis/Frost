@@ -73,7 +73,7 @@ class SpotifyLinkScreen(private val parent: Screen?) : Screen(Component.literal(
     }
 
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

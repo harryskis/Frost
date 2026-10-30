@@ -40,7 +40,7 @@ class MiscScreen(private val parent: Screen?) : Screen(Component.literal("Frost 
                 "Spotify Link",
                 ModConfig.isSpotifyLinkEnabled(),
                 onToggle = { ModConfig.setSpotifyLinkEnabled(it) },
-                onOpenSettings = { minecraft?.setScreen(SpotifyLinkScreen(this)) },
+                onOpenSettings = { minecraft.gui.setScreen(SpotifyLinkScreen(this)) },
             ),
         )
         y += buttonHeight + spacing
@@ -60,7 +60,7 @@ class MiscScreen(private val parent: Screen?) : Screen(Component.literal("Frost 
     }
 
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

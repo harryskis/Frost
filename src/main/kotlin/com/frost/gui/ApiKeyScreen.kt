@@ -79,7 +79,7 @@ class ApiKeyScreen(private val parent: Screen?) : Screen(Component.literal("Fros
     }
 
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

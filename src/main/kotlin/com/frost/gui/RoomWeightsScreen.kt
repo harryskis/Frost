@@ -38,7 +38,7 @@ class RoomWeightsScreen(private val parent: Screen?) : Screen(Component.literal(
         for (category in RoomDatabase.CATEGORIES) {
             addRenderableWidget(
                 Button.builder(Component.literal(RoomDatabase.categoryLabel(category))) {
-                    minecraft?.setScreen(RoomWeightCategoryScreen(this, category))
+                    minecraft.gui.setScreen(RoomWeightCategoryScreen(this, category))
                 }
                     .bounds(x, y, buttonWidth, buttonHeight)
                     .build(),
@@ -61,7 +61,7 @@ class RoomWeightsScreen(private val parent: Screen?) : Screen(Component.literal(
     }
 
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

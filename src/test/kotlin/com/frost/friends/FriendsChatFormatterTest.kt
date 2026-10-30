@@ -91,26 +91,42 @@ class FriendsChatFormatterTest {
     }
 
     @Test
-    fun `friend line shows username and status`() {
+    fun `friend line shows username and location`() {
         val entry = FriendEntry("Ducky_", "SkyBlock - Private Island")
         val line = FriendsChatFormatter.friendLine(entry, emptySet(), null)
         assertTrue(line.string.contains("Ducky_"))
-        assertTrue(line.string.contains("SkyBlock"))
+        assertTrue(line.string.contains("Private Island"))
     }
 
     @Test
-    fun `friend line truncates the status to its first dash-delimited piece`() {
+    fun `friend line cuts out the SkyBlock prefix, keeping just the first piece of what's left`() {
         val entry = FriendEntry("Nightowl3", "SkyBlock - Master Mode The Catacombs - [MM] Floor VII")
         val line = FriendsChatFormatter.friendLine(entry, emptySet(), null)
-        assertTrue(line.string.contains("SkyBlock"))
-        assertTrue(!line.string.contains("Catacombs"))
+        assertTrue(line.string.contains("Master Mode The Catacombs"))
+        assertTrue(!line.string.contains("SkyBlock"))
+        assertTrue(!line.string.contains("Floor VII"))
     }
 
     @Test
-    fun `friend line leaves a status with no dash unchanged`() {
+    fun `friend line leaves a status with no SkyBlock prefix unchanged`() {
         val entry = FriendEntry("Emberfox", "Limbo")
         val line = FriendsChatFormatter.friendLine(entry, emptySet(), null)
         assertTrue(line.string.contains("Limbo"))
+    }
+
+    @Test
+    fun `friend line colors the Dungeon Hub location gold`() {
+        val entry = FriendEntry("Ducky_", "SkyBlock - Dungeon Hub")
+        val line = FriendsChatFormatter.friendLine(entry, emptySet(), null)
+        assertTrue(line.string.contains("Dungeon Hub"))
+        assertTrue(line.string.contains("§6Dungeon Hub"))
+    }
+
+    @Test
+    fun `friend line colors an ordinary location white`() {
+        val entry = FriendEntry("Ducky_", "SkyBlock - Private Island")
+        val line = FriendsChatFormatter.friendLine(entry, emptySet(), null)
+        assertTrue(line.string.contains("§fPrivate Island"))
     }
 
     @Test
@@ -213,7 +229,7 @@ class FriendsChatFormatterTest {
     fun `friend line places the tag suffix immediately after the username, before the status`() {
         val entry = FriendEntry("Frostwing", "SkyBlock - The Catacombs - Floor VII")
         val line = FriendsChatFormatter.friendLine(entry, setOf("M5"), null)
-        assertTrue(line.string.contains("Frostwing §7[M5] §7- §fSkyBlock"))
+        assertTrue(line.string.contains("Frostwing §7[M5] §7- §fThe Catacombs"))
     }
 
     @Test

@@ -13,7 +13,8 @@ import net.minecraft.network.chat.Component
  * right-click opens its settings screen regardless of on/off state. Recruit (the floor +
  * filled-classes state used to build each friend's invite message, plus the Party Finder
  * auto-fill) lives here rather than under Better Friends List - it's a dungeon-team concern,
- * not a friends-list one, even though its [Recruit] button surfaces inside /fl.
+ * not a friends-list one, even though its [Recruit] button surfaces inside /fl. Aim Assist
+ * (a light pull toward Odin's etherwarp waypoints) opens [AimAssistScreen] for its strength.
  */
 class DungeonsScreen(private val parent: Screen?) : Screen(Component.literal("Frost - Dungeons")) {
     private var panelX = 0
@@ -25,7 +26,7 @@ class DungeonsScreen(private val parent: Screen?) : Screen(Component.literal("Fr
         val buttonWidth = 150
         val buttonHeight = 20
         val spacing = 6
-        val rowCount = 3 // Contributions + Recruit + Done
+        val rowCount = 4 // Contributions + Recruit + Aim Assist + Done
         val contentHeight = rowCount * buttonHeight + (rowCount - 1) * spacing
 
         val panelPadding = 16
@@ -44,7 +45,7 @@ class DungeonsScreen(private val parent: Screen?) : Screen(Component.literal("Fr
                 "Contributions",
                 ModConfig.isDungeonContributionsEnabled(),
                 onToggle = { ModConfig.setDungeonContributionsEnabled(it) },
-                onOpenSettings = { minecraft?.setScreen(DungeonContributionsScreen(this)) },
+                onOpenSettings = { minecraft.gui.setScreen(DungeonContributionsScreen(this)) },
             ),
         )
         y += buttonHeight + spacing
@@ -55,7 +56,18 @@ class DungeonsScreen(private val parent: Screen?) : Screen(Component.literal("Fr
                 "Recruit",
                 ModConfig.isRecruitEnabled(),
                 onToggle = { ModConfig.setRecruitEnabled(it) },
-                onOpenSettings = { minecraft?.setScreen(RecruitScreen(this)) },
+                onOpenSettings = { minecraft.gui.setScreen(RecruitScreen(this)) },
+            ),
+        )
+        y += buttonHeight + spacing
+
+        addRenderableWidget(
+            FeatureButton(
+                x, y, buttonWidth, buttonHeight,
+                "Aim Assist",
+                ModConfig.isAimAssistEnabled(),
+                onToggle = { ModConfig.setAimAssistEnabled(it) },
+                onOpenSettings = { minecraft.gui.setScreen(AimAssistScreen(this)) },
             ),
         )
         y += buttonHeight + spacing
@@ -75,7 +87,7 @@ class DungeonsScreen(private val parent: Screen?) : Screen(Component.literal("Fr
     }
 
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

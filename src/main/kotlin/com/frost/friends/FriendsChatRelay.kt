@@ -373,7 +373,7 @@ object FriendsChatRelay {
      * the chat input box if it's focused - there's no mixin here to suppress that. Binding a
      * function key (F1-F12) or similar avoids the collision entirely. */
     fun checkTagHotkeys(client: Minecraft) {
-        if (client.screen !is ChatScreen || !ModConfig.isBetterFriendsListEnabled()) {
+        if (client.gui.screen() !is ChatScreen || !ModConfig.isBetterFriendsListEnabled()) {
             if (heldTagHotkeys.isNotEmpty()) heldTagHotkeys.clear()
             return
         }
@@ -381,10 +381,9 @@ object FriendsChatRelay {
         val boundKeyCodes = tags.mapNotNullTo(mutableSetOf()) { it.keyCode.takeIf { code -> code >= 0 } }
         heldTagHotkeys.retainAll(boundKeyCodes)
 
-        val window = client.window
         for (tag in tags) {
             if (tag.keyCode < 0 || tag.name.isBlank()) continue
-            val pressed = InputConstants.isKeyDown(window, tag.keyCode)
+            val pressed = InputConstants.isKeyDown(tag.keyCode)
             val wasHeld = tag.keyCode in heldTagHotkeys
             if (pressed && !wasHeld) {
                 heldTagHotkeys.add(tag.keyCode)
@@ -417,7 +416,7 @@ object FriendsChatRelay {
         val mouseX = client.mouseHandler.getScaledXPos(window).toInt()
         val mouseY = client.mouseHandler.getScaledYPos(window).toInt()
         val finder = ActiveTextCollector.ClickableStyleFinder(client.font, mouseX, mouseY).includeInsertions(true)
-        client.gui.chat.captureClickableText(finder, window.guiScaledHeight, client.gui.guiTicks, ChatComponent.DisplayMode.FOREGROUND)
+        client.gui.hud.chat.captureClickableText(finder, window.guiScaledHeight, client.gui.hud.guiTicks, ChatComponent.DisplayMode.FOREGROUND)
         return finder.result()?.insertion
     }
 }

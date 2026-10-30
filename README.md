@@ -5,7 +5,7 @@ Catacombs dungeon runs - exactly which rooms each player cleared (solo or as par
 stack), secrets found, and a configurable weighted "contribution score" that accounts for
 some rooms being harder than others.
 
-Built for Minecraft 26.1.2 (Fabric), in Kotlin. Requires Java 25.
+Built for Minecraft 26.3 (Fabric), in Kotlin. Requires Java 25.
 
 ## Features
 
@@ -22,6 +22,9 @@ Built for Minecraft 26.1.2 (Fabric), in Kotlin. Requires Java 25.
   score to party chat, all chat, or keep it local-only.
 - **On-demand summary** - `/frost lastrun` re-prints the current/most recent run's
   breakdown at any time.
+- **Aim Assist** (`/frost` -> Dungeons -> Aim Assist) - a light, adjustable pull toward
+  [Odin](https://github.com/odtheking/Odin)'s etherwarp waypoints, only while sneaking with
+  an Aspect of the Void. Requires Odin (0.4.0+ on 26.3) with its Dungeon Waypoints module enabled.
 - **Spotify playback control** (`/frost spotify`) - skip, go back, and play/pause Spotify
   from in-game, bindable to any key via the Keybinds screen. Requires Spotify Premium (a
   Spotify platform requirement for playback control, not a mod limitation).
@@ -77,7 +80,7 @@ desire, just note that doing so may not reflect accuracy. If not mentioned below
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 26.1.2, and make sure you are running Java 25 or newer (Minecraft 26.x requires it).
+1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft 26.3, and make sure you are running Java 25 or newer (Minecraft 26.x requires it).
 2. Install [Fabric API](https://modrinth.com/mod/fabric-api) and
    [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin).
 3. Drop Frost's jar into your `mods` folder.

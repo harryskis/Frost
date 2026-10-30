@@ -11,10 +11,10 @@ pluginManagement {
     val kotlin_version: String by settings
 
     plugins {
-        // Loom 1.17.x hard-requires a `mappings` dependency, which Minecraft 26.x has
-        // nothing to supply (it ships deobfuscated - see build.gradle.kts). The 1.16 line
-        // is what the 26.x-era ecosystem actually builds against; Odin pins the same
-        // version for the same reason.
+        // Early Loom 1.17.x hard-required a `mappings` dependency, which Minecraft 26.x has
+        // nothing to supply (it ships deobfuscated - see build.gradle.kts), so the 26.1/26.2
+        // builds pinned the 1.16 line. For 26.3 the ecosystem moved to 1.17-SNAPSHOT (Odin
+        // 0.4.0's own 26.3 build pins it), and it builds without mappings.
         id("net.fabricmc.fabric-loom") version loom_version
         kotlin("jvm") version kotlin_version
     }

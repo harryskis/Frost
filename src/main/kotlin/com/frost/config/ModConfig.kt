@@ -91,7 +91,21 @@ data class ModConfigData(
     // Party Finder auto-fill, and the [Recruit] button in /fl) is its own feature under the
     // Dungeons tab, so it can be toggled independently of the rest of the friends list.
     var recruitEnabled: Boolean = false,
+    // Pulls the crosshair toward Odin's etherwarp waypoints while sneaking with an Aspect of
+    // the Void - see com.frost.dungeon.AimAssist. Strength is a 1-100 percent.
+    var aimAssistEnabled: Boolean = false,
+    var aimAssistStrength: Int = DEFAULT_AIM_ASSIST_STRENGTH,
+    // Per-waypoint aim anchor overrides set in Aim Assist's edit mode, keyed by
+    // "<Odin room name>|<x>,<y>,<z>" in that room's RELATIVE coordinates (so it applies no
+    // matter where or which way the room spawns), valued by a com.frost.dungeon.AimAnchor
+    // name - also room-relative for North/South/East/West. A waypoint absent from this map
+    // is aimed at its center (the default).
+    var aimAssistAnchors: MutableMap<String, String> = mutableMapOf(),
 )
+
+const val DEFAULT_AIM_ASSIST_STRENGTH = 50
+const val MIN_AIM_ASSIST_STRENGTH = 1
+const val MAX_AIM_ASSIST_STRENGTH = 100
 
 /** One user-defined friend tag: [name] plus which friends are in it - see
  * [com.frost.gui.FriendTagsScreen]. [members] can contain a blank/duplicate entry mid-edit
@@ -231,6 +245,35 @@ object ModConfig {
     fun setRecruitEnabled(enabled: Boolean) {
         val config = get()
         config.recruitEnabled = enabled
+        save(config)
+    }
+
+    fun isAimAssistEnabled(): Boolean = get().aimAssistEnabled
+    fun setAimAssistEnabled(enabled: Boolean) {
+        val config = get()
+        config.aimAssistEnabled = enabled
+        save(config)
+    }
+
+    /** Clamped on read too, so a hand-edited out-of-range value in frost.json can't make the
+     * assist snap harder than the slider allows. */
+    fun getAimAssistStrength(): Int =
+        get().aimAssistStrength.coerceIn(MIN_AIM_ASSIST_STRENGTH, MAX_AIM_ASSIST_STRENGTH)
+    fun setAimAssistStrength(strength: Int) {
+        val config = get()
+        config.aimAssistStrength = strength.coerceIn(MIN_AIM_ASSIST_STRENGTH, MAX_AIM_ASSIST_STRENGTH)
+        save(config)
+    }
+
+    /** Raw stored anchor name for [key] (see [ModConfigData.aimAssistAnchors]), or null if
+     * that waypoint was never edited. */
+    fun getAimAssistAnchor(key: String): String? = get().aimAssistAnchors[key]
+
+    /** Saves [anchorName] for [key]; null (the default, center) removes the entry instead of
+     * storing it, so the file only ever holds waypoints that actually differ from default. */
+    fun setAimAssistAnchor(key: String, anchorName: String?) {
+        val config = get()
+        if (anchorName == null) config.aimAssistAnchors.remove(key) else config.aimAssistAnchors[key] = anchorName
         save(config)
     }
 

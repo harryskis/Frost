@@ -12,6 +12,7 @@ import net.minecraft.client.gui.components.ContainerObjectSelectionList
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.TextColor
 
 /**
  * Scrollable list of the player's friend tags - each row is a tag-name text field, a color
@@ -83,8 +84,9 @@ class FriendTagListWidget(
     override fun getRowWidth(): Int = 360
 
     inner class TagEntry(private val client: Minecraft, val tag: FriendTag) : Entry<TagEntry>() {
-        // None (null) first, then the 16 standard colors in their declared order.
-        private val colorOptions: List<ChatFormatting?> = listOf(null) + ChatFormatting.values().filter { it.isColor }
+        // None (null) first, then the 16 standard colors in their declared order. (MC 26.3
+        // dropped ChatFormatting.isColor - TextColor.fromLegacyFormat is null for non-colors.)
+        private val colorOptions: List<ChatFormatting?> = listOf(null) + ChatFormatting.values().filter { TextColor.fromLegacyFormat(it) != null }
 
         private val nameField = EditBox(minecraft.font, 0, 0, 95, 20, Component.literal("Tag name"))
         private val colorButton = Button.builder(colorLabel()) { cycleColor() }.bounds(0, 0, 70, 20).build()
@@ -119,7 +121,7 @@ class FriendTagListWidget(
             if (tag.keyCode < 0) {
                 Component.literal("Set key")
             } else {
-                InputConstants.Type.KEYSYM.getOrCreate(tag.keyCode).displayName
+                InputConstants.Type.KEYBOARD.getOrCreate(tag.keyCode).displayName
             }
 
         fun refreshKeyLabel() {
@@ -132,7 +134,7 @@ class FriendTagListWidget(
         }
 
         private fun openMembers() {
-            minecraft.setScreen(FriendTagMembersScreen(parentScreen, tag))
+            minecraft.gui.setScreen(FriendTagMembersScreen(parentScreen, tag))
         }
 
         override fun extractContent(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, hovered: Boolean, tickDelta: Float) {

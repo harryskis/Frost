@@ -32,8 +32,13 @@ object FriendsChatFormatter {
         // ChatFormatting is a Java enum, not Kotlin - .entries isn't generated for it, only
         // the static .values() method is available.
         val formatting = ChatFormatting.values().find { it.name == tag.color } ?: return DEFAULT_GRAY
-        return formatting.char
+        // MC 26.3 made ChatFormatting's code char private (no getChar() anymore), so it's
+        // recovered by reverse lookup through the still-public getByCode.
+        return LEGACY_FORMAT_CODES.firstOrNull { ChatFormatting.getByCode(it) == formatting } ?: DEFAULT_GRAY
     }
+
+    // Every legacy formatting code character, colors (0-f) then styles (k-o) and reset (r).
+    private const val LEGACY_FORMAT_CODES = "0123456789abcdefklmnor"
     /** A plain divider line, printed above and below the whole friends block so it reads as
      * clearly separate from surrounding chat - same visual language as RunSummary's own
      * room-breakdown borders. */
@@ -96,22 +101,38 @@ object FriendsChatFormatter {
         return line
     }
 
-    /** Trims a friend's status down to just its first " - "-delimited piece - confirmed live
-     * status text is things like "SkyBlock - Private Island" or "SkyBlock - Master Mode The
-     * Catacombs - [MM] Floor VII" (see FriendsParserTest), which is far more detail than is
-     * useful in a friends-list line; "Limbo" (no dash) passes through unchanged. */
-    private fun truncateLocation(status: String): String = status.substringBefore(" - ")
+    /** Cuts the leading "SkyBlock" piece out of a friend's status entirely and returns just
+     * their actual location - confirmed live status text is things like "SkyBlock - Private
+     * Island" (-> "Private Island") or "SkyBlock - Master Mode The Catacombs - [MM] Floor
+     * VII" (-> "Master Mode The Catacombs", the first piece of what's left once "SkyBlock"
+     * itself is dropped). A status with no "SkyBlock" prefix at all - "Limbo" - passes
+     * through unchanged, since there's nothing to cut. */
+    private fun extractLocation(status: String): String {
+        val parts = status.split(" - ")
+        return if (parts.firstOrNull() == "SkyBlock" && parts.size > 1) parts[1] else parts[0]
+    }
 
-    /** One friend's line, e.g. "§7Frostwing §7[M5] §7- §fSkyBlock" - the username always renders
-     * in [FriendEntry.nameColor] (Hypixel's own rank color for that player, captured off the
-     * raw chat line - see [FriendsParser.parseMessage]), falling back to gray when it
+    // Hypixel's own gold - queueing up in the Dungeon Hub is the moment a friend's most
+    // recruitable, so it's worth standing out from the plain white every other location
+    // renders in.
+    private const val DUNGEON_HUB_COLOR = '6'
+    private const val DEFAULT_LOCATION_COLOR = 'f'
+
+    private fun locationColor(location: String): Char =
+        if (location == "Dungeon Hub") DUNGEON_HUB_COLOR else DEFAULT_LOCATION_COLOR
+
+    /** One friend's line, e.g. "§7Frostwing §7[M5] §7- §fPrivate Island" - the username always
+     * renders in [FriendEntry.nameColor] (Hypixel's own rank color for that player, captured
+     * off the raw chat line - see [FriendsParser.parseMessage]), falling back to gray when it
      * couldn't be captured (e.g. a caller that built a [FriendEntry] directly, without going
      * through the real parser). [tags] render immediately after the username - right where
      * this example shows "[M5]" - only when [showTags] is true (the main /fl page and the
      * "All" tab show them since they mix friends from different tags together; a specific
      * tag's page hides them since you already know which tag you're looking at - see
      * FriendsChatRelay.showTab), in [tagColor] (see [resolveTagColor]) rather than the
-     * username's own color.
+     * username's own color. The location itself (see [extractLocation]) renders gold when
+     * it's "Dungeon Hub" (see [locationColor]) - the moment a friend's most recruitable is
+     * worth standing out from the plain white every other location renders in.
      *
      * Two trailing icons appear for [entry]'s that are online (there's no one to actually
      * message or invite otherwise): [showRecruitButton] gates "[Recruit]" (only meaningful
@@ -135,11 +156,12 @@ object FriendsChatFormatter {
     ): Component {
         val nameColor = entry.nameColor ?: DEFAULT_GRAY
         val tagSuffix = if (!showTags || tags.isEmpty()) "" else " §$tagColor[${tags.sorted().joinToString(", ")}]"
+        val location = extractLocation(entry.status)
         // The insertion carries no visible/clickable effect on its own - it's read back out
         // by FriendsChatRelay.resolveHoveredUsername to identify which friend is under the
         // mouse when a tag hotkey is pressed, the same "invisible metadata riding on a
         // Style" trick vanilla uses for shift-click-to-insert-a-name.
-        val line = Component.literal("§$nameColor${entry.username}$tagSuffix §7- §f${truncateLocation(entry.status)}")
+        val line = Component.literal("§$nameColor${entry.username}$tagSuffix §7- §${locationColor(location)}$location")
             .withStyle { it.withInsertion(entry.username) }
         if (!entry.isOnline) return line
 

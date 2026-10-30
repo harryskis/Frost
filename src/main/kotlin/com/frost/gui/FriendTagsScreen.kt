@@ -70,7 +70,7 @@ class FriendTagsScreen(private val parent: Screen?) : Screen(Component.literal("
 
     override fun onClose() {
         ModConfig.setFriendTags(list.tagsSnapshot())
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

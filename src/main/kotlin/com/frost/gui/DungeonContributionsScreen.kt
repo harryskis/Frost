@@ -40,7 +40,7 @@ class DungeonContributionsScreen(private val parent: Screen?) : Screen(Component
 
         for ((label, openScreen) in entries) {
             addRenderableWidget(
-                Button.builder(Component.literal(label)) { minecraft?.setScreen(openScreen(this)) }
+                Button.builder(Component.literal(label)) { minecraft.gui.setScreen(openScreen(this)) }
                     .bounds(x, y, buttonWidth, buttonHeight)
                     .build(),
             )
@@ -62,7 +62,7 @@ class DungeonContributionsScreen(private val parent: Screen?) : Screen(Component
     }
 
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        minecraft.gui.setScreen(parent)
     }
 
     override fun isPauseScreen(): Boolean = false

@@ -1,5 +1,6 @@
 package com.frost.gui
 
+import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.AbstractWidget
@@ -31,16 +32,19 @@ class FeatureButton(
     private val onOpenSettings: () -> Unit,
 ) : AbstractWidget(x, y, width, height, Component.literal(label)) {
 
+    // Named constants, not raw numbers: MC 26.3 renumbered mouse buttons (left 0 -> 1, right
+    // 1 -> 3), which silently swapped left-click onto the open-settings branch and made
+    // right-click invalid while this still used the old raw 0/1.
     override fun isValidClickButton(buttonInfo: MouseButtonInfo): Boolean =
-        buttonInfo.button() == 0 || buttonInfo.button() == 1
+        buttonInfo.button() == InputConstants.MOUSE_BUTTON_LEFT || buttonInfo.button() == InputConstants.MOUSE_BUTTON_RIGHT
 
     override fun onClick(event: MouseButtonEvent, doubleClick: Boolean) {
         when (event.button()) {
-            0 -> {
+            InputConstants.MOUSE_BUTTON_LEFT -> {
                 enabled = !enabled
                 onToggle(enabled)
             }
-            1 -> onOpenSettings()
+            InputConstants.MOUSE_BUTTON_RIGHT -> onOpenSettings()
         }
     }
 

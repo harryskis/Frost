@@ -20,11 +20,11 @@ object OnboardingFlow {
             "update it every two days."
 
     fun start(client: Minecraft) {
-        client.setScreen(
+        client.gui.setScreen(
             OnboardingMessageScreen("Welcome", WELCOME_MESSAGE, "Got it") {
-                client.setScreen(
+                client.gui.setScreen(
                     OnboardingMessageScreen("API Key", API_KEY_MESSAGE, "Close") {
-                        client.setScreen(null)
+                        client.gui.setScreen(null)
                     },
                 )
             },

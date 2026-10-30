@@ -90,7 +90,7 @@ class KeybindListWidget(
             if (keybind.keyCode < 0) {
                 Component.literal("Set key")
             } else {
-                InputConstants.Type.KEYSYM.getOrCreate(keybind.keyCode).displayName
+                InputConstants.Type.KEYBOARD.getOrCreate(keybind.keyCode).displayName
             }
 
         fun refreshBindLabel() {
