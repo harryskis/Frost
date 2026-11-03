@@ -8,6 +8,25 @@ import kotlin.test.assertTrue
 
 class ChatParserTest {
     @Test
+    fun `isBloodDoorOpenedMessage matches the announcement, but not someone typing it`() {
+        assertTrue(ChatParser.isBloodDoorOpenedMessage("The BLOOD DOOR has been opened!"))
+        assertFalse(ChatParser.isBloodDoorOpenedMessage("Someone: The BLOOD DOOR has been opened!"))
+    }
+
+    @Test
+    fun `isRunSummaryMessage matches the centered heading, but not someone typing it`() {
+        assertTrue(ChatParser.isRunSummaryMessage("                             > EXTRA STATS <"))
+        assertFalse(ChatParser.isRunSummaryMessage("[MVP+] Someone: > EXTRA STATS <"))
+    }
+
+    @Test
+    fun `parseLeapTarget reads the name from the teleport line, but not from someone typing it`() {
+        assertEquals("weepcore", ChatParser.parseLeapTarget("You have teleported to weepcore!"))
+        assertNull(ChatParser.parseLeapTarget("[MVP+] Someone: You have teleported to weepcore!"))
+        assertNull(ChatParser.parseLeapTarget("Party > Someone: Leaped to weepcore!"))
+    }
+
+    @Test
     fun `recognizes the Mort good luck start line`() {
         assertTrue(ChatParser.isDungeonStartMessage("[NPC] Mort: Good luck."))
     }

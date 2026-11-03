@@ -2,6 +2,7 @@ package com.frost.parsing
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -33,5 +34,12 @@ class ScoreboardParserTest {
         assertNull(ScoreboardParser.parseSecretsFoundTeamTotal("Purse: 1,234"))
         assertNull(ScoreboardParser.parseClearedPercent("Purse: 1,234"))
         assertNull(ScoreboardParser.parseFloor("Purse: 1,234"))
+    }
+
+    @Test
+    fun `the run timer line shows the run has begun, but the countdown doesn't`() {
+        assertTrue(ScoreboardParser.isRunTimerLine("Time Elapsed: 04s"))
+        assertTrue(ScoreboardParser.isRunTimerLine(" Time Elapsed: 01m 31s"))
+        assertFalse(ScoreboardParser.isRunTimerLine(" Starting in: 0:01"))
     }
 }

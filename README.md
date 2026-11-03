@@ -9,6 +9,10 @@ Built for Minecraft 26.3 (Fabric), in Kotlin. Requires Java 25.
 
 ## Features
 
+Everything is set up from the `/frost` menu: draggable columns by category, where left-clicking
+a feature turns it on or off and right-clicking opens its settings beneath it. Right-click a
+column's header to collapse it, or use the search bar at the bottom.
+
 - **Room tracking** - identifies the real name of every room cleared (e.g. "Crypt", "Ice
   Fill"), and who cleared it, split into solo vs. stacked credit.
 - **Secrets tracking** - per-player secrets-found diff for the run, via the Hypixel API.
@@ -18,13 +22,45 @@ Built for Minecraft 26.3 (Fabric), in Kotlin. Requires Java 25.
 - **Weighted contribution score** - an end-of-run message summarizing each player's score
   (room weights + secrets), with automatic retries if Hypixel's API hasn't caught up yet
   with the run's secrets.
-- **Configurable chat channel** (`/frost` -> "Chat Channel") - send the contribution
+- **Configurable chat channel** (`/frost` -> Dungeons -> Contributions) - send the contribution
   score to party chat, all chat, or keep it local-only.
 - **On-demand summary** - `/frost lastrun` re-prints the current/most recent run's
   breakdown at any time.
 - **Aim Assist** (`/frost` -> Dungeons -> Aim Assist) - a light, adjustable pull toward
   [Odin](https://github.com/odtheking/Odin)'s etherwarp waypoints, only while sneaking with
   an Aspect of the Void. Requires Odin (0.4.0+ on 26.3) with its Dungeon Waypoints module enabled.
+- **Dungeon Map** (`/frost` -> Dungeons -> Dungeon Map) - a movable dungeon map on your HUD showing
+  the rooms that have been opened, with party members shown as skin heads that turn with them.
+  Names turn green when a room is cleared and secret counts when they're all found. Left-click
+  toggles it; right-click opens its menu: **Edit Map** to drag it around (hold it and scroll to
+  resize), **Blood Rush Path** for a line showing the way to the blood door until it's opened,
+  **Total Secrets** for a line under the map with the team's secrets out of the dungeon's total,
+  worked out from the tab list, **Limit Room Names** to shrink long names to fit their rooms, **Special Room Names** to hide the
+  names of blood, fairy, entrance, miniboss or trap rooms, **Fill Completed Rooms** to fill rooms
+  with a solid color once both are done, **Filled Room Types** to include blood, miniboss, trap
+  and puzzle rooms in that, **Fill Color** and **Background Color** color pickers, and **Player
+  Head Size** and **Room Text Size** sliders.
+- **Funny Map** (`/frost` -> Dungeons -> Funny Map) - shows every room on Dungeon Map before it's
+  discovered, read from the world itself, dimmed until someone opens it. Only shows what your
+  client has loaded, so far rooms stay blank until you get closer. Right-click for **Toggle
+  Funny** to turn it on and off with a key, **Star Mobs** to mark the starred mobs in your current
+  room, and **Blood Rush Alert** for big text when the blood rush only goes through 2 rooms, not
+  counting entrance, fairy and blood, with **Alert 3 Room** to also warn of 3, and **Alert on
+  Possible** to warn when the part that hasn't loaded could make it that short.
+- **Glass Doors** (`/frost` -> Dungeons -> Glass Doors) - turns the door out of the entrance
+  room into glass, on your client only, so you can see through it while it still blocks you
+  and opens normally. Right-click it to do the same to wither doors.
+- **Star Mob ESP** (`/frost` -> Dungeons -> Star Mob ESP) - highlights every starred mob through
+  walls, in a color you choose, as an outline or a filled box.
+- **M5 Auto Ult** (`/frost` -> Dungeons -> M5 Auto Ult) - as Healer or Tank, presses your drop key
+  once about 10 seconds after entering the M5 boss, to use your ultimate.
+- **Leap Fix** (`/frost` -> Dungeons -> Leap Fix) - after a spirit leap, turns you to face the same
+  way as the player you leaped to.
+- **Fairy Door ESP** (`/frost` -> Dungeons -> Fairy Door ESP) - highlights the wither door out of
+  the fairy room through walls, so you can see which way to go before you enter.
+- **Croesus** (`/frost` -> Dungeons -> Croesus) - tracks your unopened Croesus chests, with a
+  movable HUD showing `Unopened Chests: xx/60` and a big red warning at 55 or more. The real
+  count is read in the Dungeon Hub, and each run you finish adds one until you're back there.
 - **Spotify playback control** (`/frost spotify`) - skip, go back, and play/pause Spotify
   from in-game, bindable to any key via the Keybinds screen. Requires Spotify Premium (a
   Spotify platform requirement for playback control, not a mod limitation).
@@ -84,7 +120,7 @@ desire, just note that doing so may not reflect accuracy. If not mentioned below
 2. Install [Fabric API](https://modrinth.com/mod/fabric-api) and
    [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin).
 3. Drop Frost's jar into your `mods` folder.
-4. In-game, run `/frost apikey <your key>` (or use the "API Key" screen from `/frost`) with
+4. In-game, run `/frost apikey <your key>` (or use `/frost` -> Developer -> Hypixel API) with
    a personal key from [developer.hypixel.net](https://developer.hypixel.net) - required
    for secrets tracking. Hypixel API keys expire periodically; if secrets stop tracking,
    generate a new one.
@@ -108,7 +144,7 @@ standard PKCE login flow.
 
 Once connected, `/frost spotify next`, `previous`, and `playpause` control playback on
 whatever device Spotify is currently active on. Bind them to keys via `/frost` ->
-"Keybinds" (or type them directly in chat) - there's no separate keybind system just for
+Quality of Life -> Keybinds (or type them directly in chat) - there's no separate keybind system just for
 Spotify.
 
 | Command | Description |
@@ -137,7 +173,7 @@ Run the unit test suite (no Minecraft client required) with:
 
 | Command | Description |
 | --- | --- |
-| `/frost` | Opens the main menu (API key, room weights, chat channel). |
+| `/frost` | Opens the main menu, where every feature is toggled and configured. |
 | `/frost apikey <key>` | Sets your Hypixel API key directly from chat. |
 | `/frost roomweights` | Opens the room-weight configuration screen. |
 | `/frost roomweights reset` | Resets room weights to the recommended values above. |

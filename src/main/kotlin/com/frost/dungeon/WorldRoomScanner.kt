@@ -86,6 +86,10 @@ object WorldRoomScanner {
         return sb.toString().hashCode() to highestBlock
     }
 
+    /** Whether the chunk holding this world column has reached the client. */
+    fun isColumnLoaded(world: ClientLevel, x: Int, z: Int): Boolean =
+        world.chunkSource.getChunk(x shr 4, z shr 4, ChunkStatus.FULL, false) != null
+
     /**
      * Identifies the room at [tile] by scanning its block column - but only if that
      * column's chunk is currently loaded on the client (returns null otherwise). Driven

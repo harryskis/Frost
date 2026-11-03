@@ -53,6 +53,35 @@ object TabListParser {
         return PlayerClassUpdate(username, className)
     }
 
+    // e.g. "[417] Bdlt ⛃ (Healer XLIII)" or "[100] Bdlt (Archer 50)" - looser than
+    // PLAYER_CLASS_LINE on purpose: anything after the name varies by server and by what
+    // class has been picked, and only the name is needed here.
+    private val MEMBER_NAME = Regex("^\\[\\d+]\\s+(\\w{1,16})(?:\\s|$)")
+
+    fun parseMemberName(line: String): String? = MEMBER_NAME.find(line.trim())?.groupValues?.get(1)
+
+    /** Whether a member line shows them as dead, in place of their class. */
+    fun isMemberDead(line: String): Boolean = line.contains("(DEAD)")
+
+    // The class in a member line, e.g. "[443] Bdlt ☃ (Tank XLIX)" or "[100] Bdlt (Archer 50)".
+    private val MEMBER_CLASS = Regex("\\((Healer|Mage|Berserk|Archer|Tank) \\w+\\)")
+
+    fun parseMemberClass(line: String): String? = MEMBER_CLASS.find(line)?.groupValues?.get(1)
+
+    // e.g. " Unclaimed chests: 26" - only shown in the Dungeon Hub.
+    private val UNCLAIMED_CHESTS = Regex("^Unclaimed chests: (\\d+)$")
+
+    fun parseUnclaimedChests(line: String): Int? = UNCLAIMED_CHESTS.find(line.trim())?.groupValues?.get(1)?.toIntOrNull()
+
+    // The tab list has both: " Secrets Found: 12" under Discoveries and " Secrets Found: 26.1%"
+    // under Dungeon Stats, each for the whole team.
+    private val SECRETS_FOUND = Regex("^Secrets Found: (\\d+)$")
+    private val SECRETS_PERCENT = Regex("^Secrets Found: ([\\d.]+)%$")
+
+    fun parseSecretsFound(line: String): Int? = SECRETS_FOUND.find(line.trim())?.groupValues?.get(1)?.toIntOrNull()
+
+    fun parseSecretsPercent(line: String): Double? = SECRETS_PERCENT.find(line.trim())?.groupValues?.get(1)?.toDoubleOrNull()
+
     /** Single-letter abbreviation for a dungeon class name, e.g. "Healer" -> 'H'. */
     fun classLetter(className: String): Char? = when (className) {
         "Healer" -> 'H'

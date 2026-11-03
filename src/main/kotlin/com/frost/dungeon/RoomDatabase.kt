@@ -16,6 +16,7 @@ object RoomDatabase {
         val type: String,
         val shape: String,
         @SerializedName("cores") val cores: List<Int> = emptyList(),
+        val secrets: Int = 0,
     )
 
     /** The 6 room-shape categories the bundled database actually uses - the room-weights

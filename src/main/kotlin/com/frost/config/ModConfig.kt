@@ -1,5 +1,6 @@
 package com.frost.config
 
+import com.frost.dungeon.FunnyMapLayout
 import com.google.gson.GsonBuilder
 import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
@@ -71,26 +72,14 @@ data class ModConfigData(
     // API key above: local file only, already covered by .gitignore, never transmitted
     // anywhere except to accounts.spotify.com/api/token.
     var spotifyRefreshToken: String? = null,
-    // User-defined friend tags for the Friends chat relay's tag tabs - see
-    // FriendTagsScreen. Tag-centric (name -> member usernames), not the other way around,
-    // to match how the screen edits it: create a tag, then assign friends to it. Renamed
-    // from the old per-friend map (friendTags: username -> tag names) when the UI moved
-    // from chat commands to this screen - old data is intentionally not migrated, a clean
-    // slate per the user's explicit request when this changed.
-    var friendTagList: MutableList<FriendTag> = mutableListOf(),
-    // Per-feature on/off state for the main menu's feature buttons (see
-    // com.frost.gui.FeatureButton) - left-click there toggles these, right-click opens the
-    // matching settings screen regardless of on/off state. All default false - a fresh
+    // Per-feature on/off state for the rows of the click GUI (see com.frost.gui.ClickGuiScreen)
+    // - left-click there toggles these, right-click opens the matching settings regardless of
+    // on/off state. All default false - a fresh
     // install should do nothing until the player opts into each feature themselves, rather
     // than a new user immediately having every feature active with no idea what's running.
     var dungeonContributionsEnabled: Boolean = false,
-    var betterFriendsListEnabled: Boolean = false,
     var keybindsEnabled: Boolean = false,
     var spotifyLinkEnabled: Boolean = false,
-    // Separate from betterFriendsListEnabled - recruit state (floor + filled classes, the
-    // Party Finder auto-fill, and the [Recruit] button in /fl) is its own feature under the
-    // Dungeons tab, so it can be toggled independently of the rest of the friends list.
-    var recruitEnabled: Boolean = false,
     // Pulls the crosshair toward Odin's etherwarp waypoints while sneaking with an Aspect of
     // the Void - see com.frost.dungeon.AimAssist. Strength is a 1-100 percent.
     var aimAssistEnabled: Boolean = false,
@@ -101,27 +90,89 @@ data class ModConfigData(
     // name - also room-relative for North/South/East/West. A waypoint absent from this map
     // is aimed at its center (the default).
     var aimAssistAnchors: MutableMap<String, String> = mutableMapOf(),
+    // Tracks unopened Croesus chests - see com.frost.dungeon.Croesus. The count is saved because
+    // it can only be read in the Dungeon Hub, and is -1 until it's been read once. The HUD's
+    // position is in GUI pixels from the top-left of the screen, starting just below the map.
+    var croesusEnabled: Boolean = false,
+    var croesusHudEnabled: Boolean = true,
+    var croesusChests: Int = -1,
+    var croesusHudX: Int = 4,
+    var croesusHudY: Int = 176,
+    // A dungeon map scanned from the world, drawn on the HUD at this position (GUI pixels from
+    // the top-left of the screen) - see com.frost.dungeon.FunnyMap.
+    var funnyMapEnabled: Boolean = false,
+    var funnyMapX: Int = 4,
+    var funnyMapY: Int = 4,
+    var funnyMapScale: Float = FunnyMapLayout.DEFAULT_SCALE,
+    // Draws the route from the entrance to the blood door on Funny Map.
+    var bloodRushPathEnabled: Boolean = false,
+    // On: a long room name shrinks to fit its room. Off: every name is the same size, even if
+    // that means it spills out of its room.
+    var limitRoomNamesEnabled: Boolean = true,
+    // Room types (see FunnyMapLayout.SPECIAL_ROOM_TYPES) whose names are hidden on Funny Map.
+    // Stored as what's hidden, so a fresh install or a new type shows its name by default.
+    var hiddenRoomNameTypes: MutableSet<String> = mutableSetOf(),
+    // Player head and room name sizes on Funny Map, as a percent of their normal size.
+    var funnyMapHeadSize: Int = DEFAULT_MAP_ELEMENT_SIZE,
+    var funnyMapTextSize: Int = DEFAULT_MAP_ELEMENT_SIZE,
+    // Fills completed rooms on the map with a solid color, ARGB like the map's background. The
+    // room types here are the optional ones from FunnyMapLayout.FILL_ROOM_TYPES that have been
+    // turned on, and Blood starts on as it has always filled.
+    var fillCompletedRoomsEnabled: Boolean = true,
+    var fillCompletedRoomTypes: MutableSet<String> = mutableSetOf("BLOOD"),
+    var fillCompletedColor: Int = DEFAULT_FILL_COMPLETED_COLOR,
+    var mapBackgroundColor: Int = DEFAULT_MAP_BACKGROUND_COLOR,
+    // A line under the map with the team's secrets out of the dungeon's total.
+    var totalSecretsEnabled: Boolean = false,
+    // Boxes around starred mobs through walls - see com.frost.dungeon.DungeonEsp. The color is
+    // plain RGB, with no alpha byte, as older configs saved it that way - its alpha is separate.
+    // Filled boxes rather than just outlines if set.
+    var starMobEspEnabled: Boolean = false,
+    var starMobEspColor: Int = DEFAULT_STAR_MOB_ESP_COLOR,
+    var starMobEspAlpha: Int = OPAQUE_ALPHA,
+    var starMobEspFilled: Boolean = false,
+    // The color picker's saved colors, shared by every picker: ARGB, by slot.
+    var favoriteColors: MutableMap<Int, Int> = mutableMapOf(),
+    // Warns of a short blood rush - see com.frost.dungeon.BloodRushAlert. Part of Funny Map.
+    var bloodRushAlertEnabled: Boolean = false,
+    var alertThreeRoomEnabled: Boolean = false,
+    var alertOnPossibleEnabled: Boolean = false,
+    // Presses the drop key shortly after entering the M5 boss - see com.frost.dungeon.M5AutoUlt.
+    var m5AutoUltEnabled: Boolean = false,
+    // Faces the way a spirit leap's target is facing - see com.frost.dungeon.LeapFix.
+    var leapFixEnabled: Boolean = false,
+    // A box through walls around the fairy room's way out - also com.frost.dungeon.DungeonEsp.
+    var fairyDoorEspEnabled: Boolean = false,
+    // Marks the starred mobs in the player's current room on Funny Map.
+    var starMobsEnabled: Boolean = false,
+    // On: Funny Map only identifies rooms that have been opened. Off: it shows every room.
+    // funnyMapModeKey is the raw GLFW keysym that switches between them (see CustomKeybind), -1
+    // meaning "not bound".
+    var funnyMapLegit: Boolean = true,
+    var funnyMapModeKey: Int = -1,
+    // Turns the door out of the entrance room into glass - see com.frost.dungeon.GlassDoors. The
+    // second setting extends that to wither doors.
+    var glassDoorsEnabled: Boolean = false,
+    var glassWitherDoorsEnabled: Boolean = false,
+    // Where each click GUI column has been dragged to, by column name. A column not listed here
+    // hasn't been moved, and goes to its default spot.
+    var clickGuiPanels: MutableMap<String, ClickGuiPanelState> = mutableMapOf(),
 )
 
+/** A click GUI column's saved position, in the GUI's own fixed-scale pixels. */
+data class ClickGuiPanelState(var x: Int = 0, var y: Int = 0, var extended: Boolean = true)
+
+const val DEFAULT_MAP_ELEMENT_SIZE = 100
+const val MIN_MAP_ELEMENT_SIZE = 50
+const val MAX_MAP_ELEMENT_SIZE = 200
+const val DEFAULT_STAR_MOB_ESP_COLOR = 0xFFC21A
+const val OPAQUE_ALPHA = 0xFF
+const val DEFAULT_FILL_COMPLETED_COLOR = 0xFF2E96DC.toInt()
+const val DEFAULT_MAP_BACKGROUND_COLOR = 0xB0080B10.toInt()
 const val DEFAULT_AIM_ASSIST_STRENGTH = 50
 const val MIN_AIM_ASSIST_STRENGTH = 1
 const val MAX_AIM_ASSIST_STRENGTH = 100
 
-/** One user-defined friend tag: [name] plus which friends are in it - see
- * [com.frost.gui.FriendTagsScreen]. [members] can contain a blank/duplicate entry mid-edit
- * (a freshly-added row nobody's typed a username into yet) - callers should ignore blanks
- * rather than treating them as an error. [color] is a [net.minecraft.ChatFormatting] enum
- * name (e.g. "AQUA"), or null for no override (default green) - stored as a plain string
- * rather than the enum itself so this data class doesn't need a Minecraft import, matching
- * the rest of this file's plain-JVM-testable config model. [keyCode] is a raw GLFW keysym
- * (see [CustomKeybind]), -1 meaning "not bound" - hovering a friend's line in chat and
- * pressing this key adds them to this tag directly, without opening any screen. */
-data class FriendTag(
-    var name: String = "",
-    val members: MutableList<String> = mutableListOf(),
-    var color: String? = null,
-    var keyCode: Int = -1,
-)
 
 /**
  * One user-configured "press [keyCode], run [command]" binding. [keyCode] is a raw GLFW
@@ -220,12 +271,6 @@ object ModConfig {
         save(config)
     }
 
-    fun isBetterFriendsListEnabled(): Boolean = get().betterFriendsListEnabled
-    fun setBetterFriendsListEnabled(enabled: Boolean) {
-        val config = get()
-        config.betterFriendsListEnabled = enabled
-        save(config)
-    }
 
     fun isKeybindsEnabled(): Boolean = get().keybindsEnabled
     fun setKeybindsEnabled(enabled: Boolean) {
@@ -241,10 +286,239 @@ object ModConfig {
         save(config)
     }
 
-    fun isRecruitEnabled(): Boolean = get().recruitEnabled
-    fun setRecruitEnabled(enabled: Boolean) {
+
+    fun getClickGuiPanel(name: String): ClickGuiPanelState? = get().clickGuiPanels[name]
+    fun setClickGuiPanel(name: String, x: Int, y: Int, extended: Boolean) {
         val config = get()
-        config.recruitEnabled = enabled
+        config.clickGuiPanels[name] = ClickGuiPanelState(x, y, extended)
+        save(config)
+    }
+
+    fun isLimitRoomNamesEnabled(): Boolean = get().limitRoomNamesEnabled
+    fun setLimitRoomNamesEnabled(enabled: Boolean) {
+        val config = get()
+        config.limitRoomNamesEnabled = enabled
+        save(config)
+    }
+
+    fun isRoomNameShown(roomType: String): Boolean = roomType !in get().hiddenRoomNameTypes
+    fun setRoomNameShown(roomType: String, shown: Boolean) {
+        val config = get()
+        if (shown) config.hiddenRoomNameTypes.remove(roomType) else config.hiddenRoomNameTypes.add(roomType)
+        save(config)
+    }
+
+    fun isBloodRushPathEnabled(): Boolean = get().bloodRushPathEnabled
+    fun setBloodRushPathEnabled(enabled: Boolean) {
+        val config = get()
+        config.bloodRushPathEnabled = enabled
+        save(config)
+    }
+
+    fun isStarMobsEnabled(): Boolean = get().starMobsEnabled
+    fun setStarMobsEnabled(enabled: Boolean) {
+        val config = get()
+        config.starMobsEnabled = enabled
+        save(config)
+    }
+
+    /** The Funny Map feature in the menu. Off is what makes Dungeon Map legit. */
+    fun isFunnyModeEnabled(): Boolean = !get().funnyMapLegit
+    fun setFunnyModeEnabled(enabled: Boolean) {
+        val config = get()
+        config.funnyMapLegit = !enabled
+        save(config)
+    }
+
+    fun isBloodRushAlertEnabled(): Boolean = get().bloodRushAlertEnabled
+    fun setBloodRushAlertEnabled(enabled: Boolean) {
+        val config = get()
+        config.bloodRushAlertEnabled = enabled
+        save(config)
+    }
+
+    fun isAlertThreeRoomEnabled(): Boolean = get().alertThreeRoomEnabled
+    fun setAlertThreeRoomEnabled(enabled: Boolean) {
+        val config = get()
+        config.alertThreeRoomEnabled = enabled
+        save(config)
+    }
+
+    fun isAlertOnPossibleEnabled(): Boolean = get().alertOnPossibleEnabled
+    fun setAlertOnPossibleEnabled(enabled: Boolean) {
+        val config = get()
+        config.alertOnPossibleEnabled = enabled
+        save(config)
+    }
+
+    fun isM5AutoUltEnabled(): Boolean = get().m5AutoUltEnabled
+    fun setM5AutoUltEnabled(enabled: Boolean) {
+        val config = get()
+        config.m5AutoUltEnabled = enabled
+        save(config)
+    }
+
+    fun isLeapFixEnabled(): Boolean = get().leapFixEnabled
+    fun setLeapFixEnabled(enabled: Boolean) {
+        val config = get()
+        config.leapFixEnabled = enabled
+        save(config)
+    }
+
+    fun isStarMobEspFilled(): Boolean = get().starMobEspFilled
+    fun setStarMobEspFilled(filled: Boolean) {
+        val config = get()
+        config.starMobEspFilled = filled
+        save(config)
+    }
+
+    fun getFunnyMapModeKey(): Int = get().funnyMapModeKey
+    fun setFunnyMapModeKey(keyCode: Int) {
+        val config = get()
+        config.funnyMapModeKey = keyCode
+        save(config)
+    }
+
+    /** Clamped on read, so a hand-edited value in frost.json can't make these absurdly large. */
+    fun getFunnyMapHeadSize(): Int = get().funnyMapHeadSize.coerceIn(MIN_MAP_ELEMENT_SIZE, MAX_MAP_ELEMENT_SIZE)
+    fun setFunnyMapHeadSize(size: Int) {
+        val config = get()
+        config.funnyMapHeadSize = size
+        save(config)
+    }
+
+    fun getFunnyMapTextSize(): Int = get().funnyMapTextSize.coerceIn(MIN_MAP_ELEMENT_SIZE, MAX_MAP_ELEMENT_SIZE)
+    fun setFunnyMapTextSize(size: Int) {
+        val config = get()
+        config.funnyMapTextSize = size
+        save(config)
+    }
+
+    fun isStarMobEspEnabled(): Boolean = get().starMobEspEnabled
+    fun setStarMobEspEnabled(enabled: Boolean) {
+        val config = get()
+        config.starMobEspEnabled = enabled
+        save(config)
+    }
+
+    /** The color pickers' setters only change the color in memory, as they run on every step of a
+     * drag. [saveCurrent] writes it once the drag ends. */
+    fun saveCurrent() = save(get())
+
+    fun getStarMobEspColor(): Int = (get().starMobEspAlpha.coerceIn(0, OPAQUE_ALPHA) shl 24) or (get().starMobEspColor and 0xFFFFFF)
+    fun setStarMobEspColor(argb: Int) {
+        val config = get()
+        config.starMobEspColor = argb and 0xFFFFFF
+        config.starMobEspAlpha = argb ushr 24
+    }
+
+    fun isFillCompletedRoomsEnabled(): Boolean = get().fillCompletedRoomsEnabled
+    fun setFillCompletedRoomsEnabled(enabled: Boolean) {
+        val config = get()
+        config.fillCompletedRoomsEnabled = enabled
+        save(config)
+    }
+
+    fun getFilledRoomTypes(): Set<String> = get().fillCompletedRoomTypes
+    fun isRoomTypeFilled(roomType: String): Boolean = roomType in get().fillCompletedRoomTypes
+    fun setRoomTypeFilled(roomType: String, filled: Boolean) {
+        val config = get()
+        if (filled) config.fillCompletedRoomTypes.add(roomType) else config.fillCompletedRoomTypes.remove(roomType)
+        save(config)
+    }
+
+    fun isTotalSecretsEnabled(): Boolean = get().totalSecretsEnabled
+    fun setTotalSecretsEnabled(enabled: Boolean) {
+        val config = get()
+        config.totalSecretsEnabled = enabled
+        save(config)
+    }
+
+    fun getFillCompletedColor(): Int = get().fillCompletedColor
+    fun setFillCompletedColor(argb: Int) {
+        get().fillCompletedColor = argb
+    }
+
+    fun getMapBackgroundColor(): Int = get().mapBackgroundColor
+    fun setMapBackgroundColor(argb: Int) {
+        get().mapBackgroundColor = argb
+    }
+
+    const val FAVORITE_COLOR_SLOTS = 4
+
+    fun getFavoriteColor(slot: Int): Int? = get().favoriteColors[slot]
+    fun setFavoriteColor(slot: Int, argb: Int) {
+        val config = get()
+        config.favoriteColors[slot] = argb
+        save(config)
+    }
+
+    fun isFairyDoorEspEnabled(): Boolean = get().fairyDoorEspEnabled
+    fun setFairyDoorEspEnabled(enabled: Boolean) {
+        val config = get()
+        config.fairyDoorEspEnabled = enabled
+        save(config)
+    }
+
+    fun isFunnyMapEnabled(): Boolean = get().funnyMapEnabled
+    fun setFunnyMapEnabled(enabled: Boolean) {
+        val config = get()
+        config.funnyMapEnabled = enabled
+        save(config)
+    }
+
+    fun getFunnyMapX(): Int = get().funnyMapX
+    fun getFunnyMapY(): Int = get().funnyMapY
+    fun getFunnyMapScale(): Float = get().funnyMapScale.coerceIn(FunnyMapLayout.MIN_SCALE, FunnyMapLayout.MAX_SCALE)
+    fun setFunnyMapPlacement(x: Int, y: Int, scale: Float) {
+        val config = get()
+        config.funnyMapX = x
+        config.funnyMapY = y
+        config.funnyMapScale = scale
+        save(config)
+    }
+
+    fun isCroesusEnabled(): Boolean = get().croesusEnabled
+    fun setCroesusEnabled(enabled: Boolean) {
+        val config = get()
+        config.croesusEnabled = enabled
+        save(config)
+    }
+
+    fun isCroesusHudEnabled(): Boolean = get().croesusHudEnabled
+    fun setCroesusHudEnabled(enabled: Boolean) {
+        val config = get()
+        config.croesusHudEnabled = enabled
+        save(config)
+    }
+
+    fun getCroesusChests(): Int = get().croesusChests
+    fun setCroesusChests(count: Int) {
+        val config = get()
+        config.croesusChests = count
+        save(config)
+    }
+
+    fun getCroesusHudX(): Int = get().croesusHudX
+    fun getCroesusHudY(): Int = get().croesusHudY
+    fun setCroesusHudPosition(x: Int, y: Int) {
+        val config = get()
+        config.croesusHudX = x
+        config.croesusHudY = y
+        save(config)
+    }
+
+    fun isGlassDoorsEnabled(): Boolean = get().glassDoorsEnabled
+    fun setGlassDoorsEnabled(enabled: Boolean) {
+        val config = get()
+        config.glassDoorsEnabled = enabled
+        save(config)
+    }
+
+    fun isGlassWitherDoorsEnabled(): Boolean = get().glassWitherDoorsEnabled
+    fun setGlassWitherDoorsEnabled(enabled: Boolean) {
+        val config = get()
+        config.glassWitherDoorsEnabled = enabled
         save(config)
     }
 
@@ -295,33 +569,5 @@ object ModConfig {
         val config = get()
         config.spotifyRefreshToken = refreshToken
         save(config)
-    }
-
-    fun getFriendTags(): List<FriendTag> = get().friendTagList
-
-    /** Replaces the whole tag list in one save - FriendTagsScreen calls this on close with
-     * its full current state, matching setCustomKeybinds's save-once-on-close pattern.
-     * Blank-named rows (an added-but-never-named tag) are dropped rather than saved. */
-    fun setFriendTags(tags: List<FriendTag>) {
-        val config = get()
-        config.friendTagList = tags.filter { it.name.isNotBlank() }.toMutableList()
-        save(config)
-    }
-
-    /** Every (non-blank) tag name [username] belongs to - used when rendering their line in
-     * the friends chat relay. */
-    fun tagsForFriend(username: String): Set<String> =
-        get().friendTagList.filter { it.name.isNotBlank() && username in it.members }.map { it.name }.toSet()
-
-    /** Every defined tag's name, for building the Friends chat relay's tab row. */
-    fun allFriendTagNames(): List<String> = get().friendTagList.map { it.name }.filter { it.isNotBlank() }
-
-    /** Adds [username] to [tag]'s members (if not already present) and saves - [tag] is
-     * expected to be one of the live records from [getFriendTags], since the hotkey feature
-     * that calls this already has that exact reference in hand from its own polling. */
-    fun addMemberToTag(tag: FriendTag, username: String) {
-        if (username in tag.members) return
-        tag.members.add(username)
-        save(get())
     }
 }

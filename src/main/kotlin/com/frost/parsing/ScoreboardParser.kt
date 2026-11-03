@@ -11,6 +11,7 @@ object ScoreboardParser {
     private val SECRETS_FOUND_PERCENT = Regex("^ ?Secrets Found: [\\d.]+%$")
     private val CLEARED_PERCENT = Regex("^ ?Cleared: (\\d+)% \\(\\d+\\)$")
     private val FLOOR_LINE = Regex("The Catacombs \\((\\w+)\\)")
+    private val RUN_TIMER = Regex("^ ?Time Elapsed: ")
 
     fun parseSecretsFoundTeamTotal(line: String): Int? =
         SECRETS_FOUND_COUNT.find(line)?.groupValues?.get(1)?.toIntOrNull()
@@ -22,4 +23,8 @@ object ScoreboardParser {
 
     fun parseFloor(line: String): String? =
         FLOOR_LINE.find(line)?.groupValues?.get(1)
+
+    /** Only shows once a run has begun - "Starting in: 0:01" takes its place on the countdown.
+     * That's a few seconds ahead of Mort's "Good luck", confirmed against a live run. */
+    fun isRunTimerLine(line: String): Boolean = RUN_TIMER.containsMatchIn(line)
 }

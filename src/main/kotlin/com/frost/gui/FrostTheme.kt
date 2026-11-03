@@ -35,15 +35,6 @@ object FrostTheme {
         context.fillGradient(0, 0, width, height, BG_TOP, BG_BOTTOM)
     }
 
-    private val DIM_OVERLAY = 0x80080B10.toInt() // BG_TOP at ~50% alpha
-
-    /** A translucent dim instead of the opaque [drawBackground] gradient - for a screen that
-     * should feel like a small floating panel rather than fully replacing whatever's behind
-     * it (e.g. FriendTagsScreen, so chat stays visible while tagging friends). */
-    fun drawDimOverlay(context: GuiGraphicsExtractor, width: Int, height: Int) {
-        context.fill(0, 0, width, height, DIM_OVERLAY)
-    }
-
     const val WORDMARK_TOP_Y = 14
     const val WORDMARK_SCALE = 2.4f
     const val SECTION_WORDMARK_TOP_Y = 10
@@ -165,18 +156,5 @@ object FrostTheme {
     fun drawPanel(context: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, hovered: Boolean = false) {
         context.fill(x, y, x + width, y + height, ACCENT_DIM)
         context.fill(x + 1, y + 1, x + width - 1, y + height - 1, if (hovered) PANEL_BG_HOVER else PANEL_BG)
-    }
-
-    private val FEATURE_ON_BG = 0xFF1E4D73.toInt() // a richer, lit blue fill for an "on" feature button
-    val FEATURE_ON_TEXT = ACCENT // bright frost blue label text to match the lit fill
-
-    /** As [drawPanel], but lit up in blue when [enabled] - the shared "on/off feature"
-     * look used by [FeatureButton] for every toggleable feature (dungeon contributions,
-     * better friends list, keybinds, Spotify link). */
-    fun drawFeaturePanel(context: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, enabled: Boolean, hovered: Boolean = false) {
-        val border = if (enabled) ACCENT else ACCENT_DIM
-        val fill = if (enabled) FEATURE_ON_BG else (if (hovered) PANEL_BG_HOVER else PANEL_BG)
-        context.fill(x, y, x + width, y + height, border)
-        context.fill(x + 1, y + 1, x + width - 1, y + height - 1, fill)
     }
 }

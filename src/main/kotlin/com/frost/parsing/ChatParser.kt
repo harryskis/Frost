@@ -32,8 +32,19 @@ object ChatParser {
     // is why matching "found a .+!" broadly caused massive over-crediting).
     private val QUIZ_BUFF_FOUND = Regex("^DUNGEON BUFF! (\\w+) found a Blessing of Time [IVXLCDM]+!.*$")
 
+    // Sent after a spirit leap - confirmed on a live run ("You have teleported to weepcore!").
+    private val LEAP_TELEPORT = Regex("^You have teleported to (\\w{1,16})!$")
+
     fun isDungeonStartMessage(rawText: String): Boolean = DUNGEON_START.matches(rawText.trim())
     fun isBossDefeatedMessage(rawText: String): Boolean = BOSS_DEFEATED.matches(rawText.trim())
+
+    /** The heading of the summary shown when a run is finished. Matched whole, so a player can't
+     * trigger it by typing it, since their name would come first. */
+    fun isRunSummaryMessage(rawText: String): Boolean = rawText.trim() == "> EXTRA STATS <"
+
+    fun isBloodDoorOpenedMessage(rawText: String): Boolean = rawText.trim() == "The BLOOD DOOR has been opened!"
+
     fun parsePuzzleSolvedSolver(rawText: String): String? = PUZZLE_SOLVED_CHAT.find(rawText.trim())?.groupValues?.get(1)
     fun parseQuizBuffFinder(rawText: String): String? = QUIZ_BUFF_FOUND.find(rawText.trim())?.groupValues?.get(1)
+    fun parseLeapTarget(rawText: String): String? = LEAP_TELEPORT.find(rawText.trim())?.groupValues?.get(1)
 }
