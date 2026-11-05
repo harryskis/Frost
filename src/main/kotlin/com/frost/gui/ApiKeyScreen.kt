@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Component
 /** Sets/updates the Hypixel API key (from developer.hypixel.net) from a text field,
  * instead of the /frost apikey <key> chat command - opened directly from the main menu's
  * "Developer" button (there's only ever this one thing here, so it skips the extra landing
- * screen Dungeons/Quality of Life/Misc each have). */
+ * screen Dungeons/QoL/Misc each have). */
 class ApiKeyScreen(private val parent: Screen?) : Screen(Component.literal("Frost - Developer")) {
     private lateinit var keyField: EditBox
 
