@@ -19,7 +19,11 @@ import com.frost.config.MIN_MAP_ELEMENT_SIZE
 import com.frost.config.ModConfig
 import com.frost.dungeon.AimAssist
 import com.frost.dungeon.FunnyMapLayout
+import com.frost.config.ChatRegexRule
 import com.frost.dungeon.KeyPickup
+import com.frost.qol.ChatRegex
+import com.frost.parsing.DungeonKey
+import com.frost.util.Sounds
 import com.frost.dungeon.MapStyle
 import com.frost.gui.map.NaRoomText
 import com.frost.shitters.M5Shitters
@@ -260,7 +264,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
             listOf(contributionsFeature(), aimAssistFeature(), dungeonMapFeature(), funnyMapFeature(), glassDoorsFeature(), starMobEspFeature(), fairyDoorEspFeature(), m5AutoUltFeature(), keyPickupFeature(), m5ShittersFeature(), leapFixFeature(), croesusFeature()),
         ),
         GuiPanel(
-            "Quality of Life",
+            "QoL",
             listOf(
                 GuiFeature(
                     "Keybinds",
@@ -269,6 +273,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                     ModConfig::setKeybindsEnabled,
                     listOf(ActionSetting("Edit Keybinds", "Add, change or remove key bindings.") { open(KeybindsScreen(this)) }),
                 ),
+                chatRegexFeature(),
             ),
         ),
         GuiPanel(
@@ -520,6 +525,105 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
         emptyList(),
     )
 
+    /** Chat Regex's rows: one dropdown per rule, then a button to add another. Adding or deleting
+     * a rule swaps the feature's rows, keeping the dropdowns of rules that are still there - and
+     * so whether each is open. */
+    private fun chatRegexFeature(): GuiFeature {
+        val rows = java.util.IdentityHashMap<ChatRegexRule, GuiSetting>()
+        val feature = GuiFeature(
+            "Chat Regex",
+            "Reacts to chat messages you choose: shows text on screen and plays a sound when one comes in. Add a rule for each message.",
+            ModConfig::isChatRegexEnabled,
+            ModConfig::setChatRegexEnabled,
+            emptyList(),
+        )
+        fun rebuild(added: ChatRegexRule? = null) {
+            val rules = ModConfig.getChatRegexRules()
+            rows.keys.removeIf { row -> rules.none { it === row } }
+            val addButton = ActionSetting("Add Rule", "Adds a new rule. Type the chat message it should react to into it.") {
+                rebuild(ModConfig.addChatRegexRule())
+            }
+            feature.settings = rules.map { rule -> rows.getOrPut(rule) { chatRegexRule(rule, open = rule === added) { rebuild() } } } + addButton
+        }
+        rebuild()
+        return feature
+    }
+
+    private fun chatRegexRule(rule: ChatRegexRule, open: Boolean, onDelete: () -> Unit): GuiSetting {
+        fun changed() = ModConfig.saveCurrent()
+        val children = listOf(
+            ToggleSetting("Enabled", "Turns this rule on or off.", { rule.enabled }, { rule.enabled = it; changed() }),
+            TextSetting(
+                "Message",
+                "The chat message to react to. Matches anywhere in a line, ignoring case and color codes - like \"A Wither Key was picked up\".",
+                CHAT_REGEX_MAX_LENGTH,
+                { rule.pattern },
+                { rule.pattern = it; changed() },
+            ),
+            ToggleSetting(
+                "Regex",
+                "Treats Message as a regular expression, like ^\\[BOSS\\] .+: or (\\w+) has obtained (\\w+) Key!. Its groups can go in Text as \$1, \$2...",
+                { rule.regex },
+                { rule.regex = it; changed() },
+            ),
+            ToggleSetting("Match Case", "Only matches with the same capitals.", { rule.matchCase }, { rule.matchCase = it; changed() }),
+            ToggleSetting("Show Text", "Shows text on screen when the message comes in.", { rule.showText }, { rule.showText = it; changed() }),
+            TextSetting(
+                "Text",
+                "What to show. Blank shows the chat message itself. \$1, \$2... put in a regex's groups, and & codes like &c work.",
+                CHAT_REGEX_MAX_LENGTH,
+                { rule.text },
+                { rule.text = it; changed() },
+            ),
+            ColorSetting("Color", "The text's color.", 0xFFFFFFFF.toInt(), { rule.color }, { rule.color = it }),
+            SliderSetting("Size", "How big the text is.", MIN_KEY_NOTIFICATION_SIZE, MAX_KEY_NOTIFICATION_SIZE, "%", { rule.size }, { rule.size = it; changed() }),
+            SliderSetting(
+                "Duration",
+                "How long the text stays on screen.",
+                MIN_KEY_NOTIFICATION_SECONDS,
+                MAX_KEY_NOTIFICATION_SECONDS,
+                "s",
+                { rule.seconds },
+                { rule.seconds = it; changed() },
+            ),
+            ActionSetting("Move Text", "Drag the text to move it. Hold it and scroll to resize.") {
+                open(
+                    TextMoveScreen(this, ChatRegex.sampleText(rule), rule.color, rule.x, rule.y, rule.size) { x, y, size ->
+                        rule.x = x
+                        rule.y = y
+                        rule.size = size
+                        changed()
+                    },
+                )
+            },
+            ToggleSetting("Play Sound", "Plays a sound when the message comes in.", { rule.playSound }, { rule.playSound = it; changed() }),
+            SoundSetting(
+                "Sound",
+                "Which Minecraft sound to play. Click one in the list to choose it and hear it.",
+                { Sounds.all },
+                { rule.sound },
+                { rule.sound = it; changed() },
+            ) { Sounds.play(rule.sound, rule.volume, rule.pitch) },
+            SliderSetting("Volume", "How loud the sound is.", 0, MAX_SOUND_VOLUME, "%", { rule.volume }, { rule.volume = it; changed() }),
+            SliderSetting("Pitch", "How high the sound is. 100% is its normal pitch.", MIN_SOUND_PITCH, MAX_SOUND_PITCH, "%", { rule.pitch }, { rule.pitch = it; changed() }),
+            ActionSetting("Test", "Shows the text and plays the sound as if the message had come in.") { ChatRegex.test(rule) },
+            ActionSetting("Delete Rule", "Removes this rule.") {
+                ModConfig.removeChatRegexRule(rule)
+                onDelete()
+            },
+        )
+        return DropdownSetting("Rule", "A chat message to react to, and what to do when it comes in.", children, open) {
+            val number = ModConfig.getChatRegexRules().indexOfFirst { it === rule } + 1
+            val message = when {
+                rule.pattern.isBlank() -> "(no message yet)"
+                ChatRegex.isBroken(rule) -> "(invalid regex)"
+                rule.pattern.length > RULE_LABEL_LENGTH -> rule.pattern.take(RULE_LABEL_LENGTH) + ".."
+                else -> rule.pattern
+            }
+            "$number. $message"
+        }
+    }
+
     private fun keyPickupFeature() = GuiFeature(
         "Key Pickup",
         "When a wither or blood key is picked up, shows it on screen and plays a sound. Each can be turned off in here.",
@@ -532,7 +636,21 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                 ModConfig::isKeyNotificationEnabled,
                 ModConfig::setKeyNotificationEnabled,
             ),
-            ActionSetting("Move Notification", "Drag the notification to move it. Hold it and scroll to resize.") { open(KeyPickupMoveScreen(this)) },
+            ActionSetting("Move Notification", "Drag the notification to move it. Hold it and scroll to resize.") {
+                open(
+                    TextMoveScreen(
+                        this,
+                        KeyPickup.text(DungeonKey.WITHER),
+                        ModConfig.getWitherKeyColor(),
+                        ModConfig.getKeyNotificationX(),
+                        ModConfig.getKeyNotificationY(),
+                        ModConfig.getKeyNotificationSize(),
+                    ) { x, y, size ->
+                        ModConfig.setKeyNotificationPosition(x, y)
+                        ModConfig.setKeyNotificationSize(size)
+                    },
+                )
+            },
             SliderSetting(
                 "Size",
                 "How big the notification is.",
@@ -574,7 +692,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
             SoundSetting(
                 "Sound",
                 "Which Minecraft sound to play. Click one in the list to choose it and hear it; scroll the list or search it.",
-                { KeyPickup.allSounds },
+                { Sounds.all },
                 ModConfig::getKeySound,
                 ModConfig::setKeySound,
                 KeyPickup::playSound,
@@ -680,5 +798,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
         private const val SPOTIFY_ID_MAX_LENGTH = 64
         private const val CHAT_CHANNEL_MAX_LENGTH = 16
         private const val SHITTERS_URL_MAX_LENGTH = 512
+        private const val CHAT_REGEX_MAX_LENGTH = 256
+        private const val RULE_LABEL_LENGTH = 16
     }
 }

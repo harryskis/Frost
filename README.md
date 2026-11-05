@@ -83,6 +83,13 @@ column's header to collapse it, or use the search bar at the bottom.
 - **Croesus** (`/frost` -> Dungeons -> Croesus) - tracks your unopened Croesus chests, with a
   movable HUD showing `Unopened Chests: xx/60` and a big red warning at 55 or more. The real
   count is read in the Dungeon Hub, and each run you finish adds one until you're back there.
+- **Chat Regex** (`/frost` -> QoL -> Chat Regex) - reacts to chat messages you choose. Add a
+  rule, type the message to watch for (like `A Wither Key was picked up` - it matches anywhere in
+  a line, ignoring case and colors), and pick what happens: text on screen, with its own
+  **Text**, **Color**, **Size**, **Duration** and place (**Move Text**), and/or a **Sound**
+  with **Volume** and **Pitch**. Blank text shows the chat line itself. Turn on **Regex** to
+  match with a regular expression, and put its groups in the text as `$1`, `$2`...; `&` color
+  codes work in the text too. **Test** shows and plays a rule without waiting for the message.
 - **Spotify playback control** (`/frost spotify`) - skip, go back, and play/pause Spotify
   from in-game, bindable to any key via the Keybinds screen. Requires Spotify Premium (a
   Spotify platform requirement for playback control, not a mod limitation).
@@ -166,7 +173,7 @@ standard PKCE login flow.
 
 Once connected, `/frost spotify next`, `previous`, and `playpause` control playback on
 whatever device Spotify is currently active on. Bind them to keys via `/frost` ->
-Quality of Life -> Keybinds (or type them directly in chat) - there's no separate keybind system just for
+QoL -> Keybinds (or type them directly in chat) - there's no separate keybind system just for
 Spotify.
 
 | Command | Description |

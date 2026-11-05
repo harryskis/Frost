@@ -99,8 +99,8 @@ abstract class GuiSetting(val name: String, val description: String) {
     /** Names search should match this row by, including anything nested inside it. */
     open fun searchNames(): List<String> = listOf(name)
 
-    protected fun drawLabel(frame: GuiFrame, indent: Int = 0, rowHeight: Int = height) {
-        frame.context.text(frame.font, name, x + ClickGuiLayout.PADDING + indent, y + (rowHeight - 8) / 2, ClickGuiColors.TEXT, false)
+    protected fun drawLabel(frame: GuiFrame, indent: Int = 0, rowHeight: Int = height, text: String = name) {
+        frame.context.text(frame.font, text, x + ClickGuiLayout.PADDING + indent, y + (rowHeight - 8) / 2, ClickGuiColors.TEXT, false)
     }
 }
 
@@ -827,17 +827,24 @@ class SoundSetting(
     }
 }
 
-/** A row that opens a group of smaller rows beneath it, nested inside a feature's dropdown. */
-class DropdownSetting(name: String, description: String, private val children: List<GuiSetting>) : GuiSetting(name, description) {
-    private var open = false
-    private val anim = GuiAnimation(false, OPEN_MILLIS)
+/** A row that opens a group of smaller rows beneath it, nested inside a feature's dropdown. Its
+ * [label], if given, is worked out as it's drawn, for one that changes, like a Chat Regex rule's. */
+class DropdownSetting(
+    name: String,
+    description: String,
+    private val children: List<GuiSetting>,
+    startOpen: Boolean = false,
+    private val label: (() -> String)? = null,
+) : GuiSetting(name, description) {
+    private var open = startOpen
+    private val anim = GuiAnimation(startOpen, OPEN_MILLIS)
 
     private val childrenHeight get() = children.sumOf { it.height }
     override val height: Int get() = ClickGuiLayout.ROW_HEIGHT + (childrenHeight * anim.value).toInt()
 
     override fun render(frame: GuiFrame) {
         anim.update(open, frame.dtMillis)
-        drawLabel(frame, rowHeight = ClickGuiLayout.ROW_HEIGHT)
+        drawLabel(frame, rowHeight = ClickGuiLayout.ROW_HEIGHT, text = label?.invoke() ?: name)
         drawChevron(frame.context, x + width - ClickGuiLayout.PADDING - CHEVRON_WIDTH, y + ClickGuiLayout.ROW_HEIGHT / 2 - 1, open, ClickGuiColors.TEXT_DIM)
 
         if (anim.value <= 0f) return

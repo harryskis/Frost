@@ -15,7 +15,8 @@ class GuiFeature(
     val description: String,
     val getter: (() -> Boolean)?,
     val setter: ((Boolean) -> Unit)?,
-    val settings: List<GuiSetting>,
+    // Can be swapped while the menu is open, for a feature whose rows come and go, like Chat Regex's rules.
+    var settings: List<GuiSetting>,
 ) {
     var expanded = false
     private var rowY = 0

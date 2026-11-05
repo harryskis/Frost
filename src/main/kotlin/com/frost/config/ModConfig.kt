@@ -184,10 +184,41 @@ data class ModConfigData(
     var keySound: String = DEFAULT_KEY_SOUND,
     var keySoundVolume: Int = DEFAULT_SOUND_PERCENT,
     var keySoundPitch: Int = DEFAULT_SOUND_PERCENT,
+    // Chat Regex - see com.frost.qol.ChatRegex. Each rule matches chat lines and shows text on
+    // screen and/or plays a sound.
+    var chatRegexEnabled: Boolean = false,
+    var chatRegexRules: MutableList<ChatRegexRule> = mutableListOf(),
     // Where each click GUI column has been dragged to, by column name. A column not listed here
     // hasn't been moved, and goes to its default spot.
     var clickGuiPanels: MutableMap<String, ClickGuiPanelState> = mutableMapOf(),
 )
+
+/**
+ * One Chat Regex rule: when a chat line matches [pattern] - plain text, or a regular expression
+ * with [regex] - it can show [text] on screen (the chat line itself if blank) and play [sound].
+ * The text's position is its center as a fraction of the screen, its size a percent of normal
+ * text, and the sound's volume and pitch percents. [id] tells rules apart, even identical ones.
+ */
+data class ChatRegexRule(
+    var id: String = java.util.UUID.randomUUID().toString(),
+    var enabled: Boolean = true,
+    var pattern: String = "",
+    var regex: Boolean = false,
+    var matchCase: Boolean = false,
+    var showText: Boolean = true,
+    var text: String = "",
+    var color: Int = 0xFFFFFFFF.toInt(),
+    var x: Float = DEFAULT_KEY_NOTIFICATION_X,
+    var y: Float = 0.25f,
+    var size: Int = DEFAULT_CHAT_REGEX_SIZE,
+    var seconds: Int = DEFAULT_KEY_NOTIFICATION_SECONDS,
+    var playSound: Boolean = true,
+    var sound: String = DEFAULT_KEY_SOUND,
+    var volume: Int = DEFAULT_SOUND_PERCENT,
+    var pitch: Int = DEFAULT_SOUND_PERCENT,
+)
+
+const val DEFAULT_CHAT_REGEX_SIZE = 200
 
 /** A click GUI column's saved position, in the GUI's own fixed-scale pixels. */
 data class ClickGuiPanelState(var x: Int = 0, var y: Int = 0, var extended: Boolean = true)
@@ -333,7 +364,11 @@ object ModConfig {
     }
 
 
-    fun getClickGuiPanel(name: String): ClickGuiPanelState? = get().clickGuiPanels[name]
+    // Columns that have been renamed, by their new name: where the old one was saved still counts.
+    private val RENAMED_PANELS = mapOf("QoL" to "Quality of Life")
+
+    fun getClickGuiPanel(name: String): ClickGuiPanelState? =
+        get().clickGuiPanels[name] ?: RENAMED_PANELS[name]?.let { get().clickGuiPanels[it] }
     fun setClickGuiPanel(name: String, x: Int, y: Int, extended: Boolean) {
         val config = get()
         config.clickGuiPanels[name] = ClickGuiPanelState(x, y, extended)
@@ -505,6 +540,15 @@ object ModConfig {
         config.fairyDoorEspEnabled = enabled
         save(config)
     }
+
+    fun isChatRegexEnabled(): Boolean = get().chatRegexEnabled
+    fun setChatRegexEnabled(enabled: Boolean) = update { it.chatRegexEnabled = enabled }
+
+    fun getChatRegexRules(): List<ChatRegexRule> = get().chatRegexRules
+
+    fun addChatRegexRule(): ChatRegexRule = ChatRegexRule().also { rule -> update { it.chatRegexRules += rule } }
+
+    fun removeChatRegexRule(rule: ChatRegexRule) = update { config -> config.chatRegexRules.removeIf { it.id == rule.id } }
 
     fun isKeyPickupEnabled(): Boolean = get().keyPickupEnabled
     fun setKeyPickupEnabled(enabled: Boolean) = update { it.keyPickupEnabled = enabled }

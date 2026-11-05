@@ -21,6 +21,8 @@ import com.frost.dungeon.RoomGrid
 import com.frost.dungeon.RoomType
 import com.frost.dungeon.WorldRoomScanner
 import com.frost.gui.ClickGuiScreen
+import com.frost.gui.TextAlerts
+import com.frost.qol.ChatRegex
 import com.frost.gui.OnboardingFlow
 import com.frost.gui.RoomWeightsScreen
 import com.frost.parsing.ChatParser
@@ -194,7 +196,8 @@ object Frost : ClientModInitializer {
         M5AutoUlt.register()
         LeapFix.register()
         M5Shitters.register()
-        KeyPickup.register()
+        TextAlerts.register()
+        ChatRegex.register()
         registerCommands()
     }
 
