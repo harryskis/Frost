@@ -510,7 +510,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
         listOf(
             TextSetting(
                 "Database",
-                "A link to the list: a Google Sheet, Pastebin, GitHub file, or any JSON, CSV or text. Players added with /frost shitters add are on it too.",
+                "A link to the list, by username or UUID: the M5 Shitters database to start with, or a Google Sheet, Pastebin, GitHub file, or any JSON, CSV or text. Clear it to use only players added with /frost shitters add.",
                 SHITTERS_URL_MAX_LENGTH,
                 ModConfig::getM5ShittersUrl,
             ) { url ->

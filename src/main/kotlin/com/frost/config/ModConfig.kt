@@ -160,9 +160,10 @@ data class ModConfigData(
     var glassWitherDoorsEnabled: Boolean = false,
     // Players flagged on the M5 Shitters list get their names shown in red - see
     // com.frost.shitters.M5Shitters. The list comes from the database at m5ShittersUrl, plus
-    // any added here by hand with /frost shitters add, by name, each with its reason.
+    // any added here by hand with /frost shitters add, by name, each with its reason. An empty
+    // URL means no database, rather than going back to the default.
     var m5ShittersEnabled: Boolean = false,
-    var m5ShittersUrl: String? = null,
+    var m5ShittersUrl: String? = DEFAULT_M5_SHITTERS_URL,
     var m5ShittersLocal: MutableMap<String, String> = mutableMapOf(),
     // Where each click GUI column has been dragged to, by column name. A column not listed here
     // hasn't been moved, and goes to its default spot.
@@ -180,6 +181,7 @@ const val OPAQUE_ALPHA = 0xFF
 const val DEFAULT_FILL_COMPLETED_COLOR = 0xFF2E96DC.toInt()
 const val DEFAULT_MAP_BACKGROUND_COLOR = 0xB0080B10.toInt()
 const val DEFAULT_AIM_ASSIST_STRENGTH = 50
+const val DEFAULT_M5_SHITTERS_URL = "https://jsonhosting.com/api/json/e7619cc9/raw"
 const val MIN_AIM_ASSIST_STRENGTH = 1
 const val MAX_AIM_ASSIST_STRENGTH = 100
 
@@ -480,7 +482,7 @@ object ModConfig {
     fun getM5ShittersUrl(): String = get().m5ShittersUrl.orEmpty()
     fun setM5ShittersUrl(url: String) {
         val config = get()
-        config.m5ShittersUrl = url.trim().takeIf { it.isNotEmpty() }
+        config.m5ShittersUrl = url.trim()
         save(config)
     }
 

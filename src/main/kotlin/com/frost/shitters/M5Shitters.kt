@@ -53,7 +53,10 @@ object M5Shitters {
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
-    @Volatile private var remote: Map<String, ShitterEntry> = emptyMap()
+    @Volatile private var records: List<ShitterRecord> = emptyList()
+    private var remote: Map<String, ShitterEntry> = emptyMap()
+    private var remoteRecords: List<ShitterRecord>? = null
+    private var remoteNamesVersion = -1
     @Volatile private var fetchedUrl: String? = null
     @Volatile private var fetching = false
     @Volatile private var lastFetchMillis = 0L
@@ -73,8 +76,25 @@ object M5Shitters {
         AbstractContainerScreen::class.java.getDeclaredField("hoveredSlot").apply { isAccessible = true }
     }.onFailure { Frost.logger.warn("M5 Shitters can't read the hovered slot, so Party Finder clicks won't show reasons", it) }.getOrNull()
 
+    /** The database's players by lowercase name, rebuilt as UUIDs' names come in. A player only
+     * listed by UUID isn't on it until their name is known; a known current name wins over the
+     * one the database has, in case they've changed it. */
+    private fun remoteEntries(): Map<String, ShitterEntry> {
+        val current = records
+        if (current !== remoteRecords || UuidNames.version != remoteNamesVersion) {
+            remoteNamesVersion = UuidNames.version
+            remoteRecords = current
+            remote = current.mapNotNull { record ->
+                val name = record.uuid?.let(UuidNames::nameOf) ?: record.name ?: return@mapNotNull null
+                name.lowercase() to ShitterEntry(name, record.reason)
+            }.toMap()
+        }
+        return remote
+    }
+
     /** Everyone on the list, by lowercase name: the database's, with the hand-added on top. */
     fun entries(): Map<String, ShitterEntry> {
+        val remote = remoteEntries()
         val local = ModConfig.getLocalShitters()
         if (cacheRemote !== remote || cacheLocal != local) {
             cache = remote + local.map { (name, reason) -> name.lowercase() to ShitterEntry(name, reason) }
@@ -159,12 +179,16 @@ object M5Shitters {
         Component.literal("§c§lM5 Shitters\n§7Reason: §f${entry.reason}\n§8Click to show it in chat.")
 
     private fun onTick(client: Minecraft) {
-        if (++tickCounter % TAB_INTERVAL_TICKS == 0) updateTabList(client)
+        if (++tickCounter % TAB_INTERVAL_TICKS == 0) {
+            learnNamesInGame(client)
+            updateTabList(client)
+        }
         if (!ModConfig.isM5ShittersEnabled()) return
+        UuidNames.tick()
         val url = ModConfig.getM5ShittersUrl()
         if (url.isBlank()) {
             if (fetchedUrl != null) {
-                remote = emptyMap()
+                records = emptyList()
                 fetchedUrl = null
             }
             return
@@ -217,12 +241,33 @@ object M5Shitters {
                 response.statusCode() !in 200..299 -> "§cThe database answered with HTTP ${response.statusCode()}."
                 else -> {
                     val parsed = ShitterDatabase.parse(response.body())
-                    remote = parsed.associateBy { it.name.lowercase() }
-                    if (parsed.isEmpty()) "§eThe database loaded, but no players could be read from it." else "§aLoaded ${parsed.size} players from the database."
+                    records = parsed
+                    val uuids = parsed.mapNotNull { it.uuid }
+                    UuidNames.request(uuids)
+                    val unnamed = UuidNames.unresolved(uuids)
+                    when {
+                        parsed.isEmpty() -> "§eThe database loaded, but no players could be read from it."
+                        unnamed > 0 -> "§aLoaded ${parsed.size} players from the database. §7Looking up the names of $unnamed - they'll go red as they come in."
+                        else -> "§aLoaded ${parsed.size} players from the database."
+                    }
                 }
             }
             if (failed) Frost.logger.warn("M5 Shitters fetch from $url failed: $outcome")
             if (report) Minecraft.getInstance().execute { message(outcome) }
+        }
+    }
+
+    /** Players on the list by UUID who are in this server's player list - the tab list and anyone
+     * nearby - have their current name right there, so it's taken from there. */
+    private fun learnNamesInGame(client: Minecraft) {
+        if (!ModConfig.isM5ShittersEnabled()) return
+        val connection = client.connection ?: return
+        val listedUuids = records.mapNotNullTo(HashSet()) { it.uuid }
+        if (listedUuids.isEmpty()) return
+        for (info in connection.onlinePlayers) {
+            val profile = info.profile
+            val uuid = profile.id.toString().replace("-", "")
+            if (uuid in listedUuids && ShitterText.isUsername(profile.name) && UuidNames.nameOf(uuid) != profile.name) UuidNames.learn(uuid, profile.name)
         }
     }
 
@@ -312,7 +357,7 @@ object M5Shitters {
             ClientCommands.literal("remove").then(
                 ClientCommands.argument("name", StringArgumentType.word()).executes { context ->
                     val name = StringArgumentType.getString(context, "name")
-                    val fromDatabase = name.lowercase() in remote
+                    val fromDatabase = name.lowercase() in remoteEntries()
                     message(
                         when {
                             ModConfig.removeLocalShitter(name) -> "§aRemoved $name from the players you added."
@@ -327,7 +372,9 @@ object M5Shitters {
         .then(
             ClientCommands.literal("list").executes {
                 val local = ModConfig.getLocalShitters()
-                message("§7${remote.size} from the database, ${local.size} added by you.")
+                val pending = UuidNames.unresolved(records.mapNotNull { it.uuid })
+                val lookingUp = if (pending > 0) ", $pending names still being looked up" else ""
+                message("§7${records.size} from the database$lookingUp, ${local.size} added by you.")
                 for ((name, reason) in local.toSortedMap(String.CASE_INSENSITIVE_ORDER)) message("§c$name§7: §f$reason")
                 1
             },

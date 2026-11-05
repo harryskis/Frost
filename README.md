@@ -64,9 +64,12 @@ column's header to collapse it, or use the search bar at the bottom.
 - **M5 Shitters** (`/frost` -> Dungeons -> M5 Shitters) - shows the names of players on the
   M5 Shitters list in red, in chat, in Party Finder and in the tab list. Click a party in Party
   Finder, or a red name in chat (like the "joined the dungeon group" message), to see why
-  they're on the list; hovering a name in chat shows it too. Right-click it to set
-  **Database**, a link to the list: a Google Sheet, Pastebin, GitHub file, or any JSON, CSV
-  or text with a name and a reason per player. It reloads every 15 minutes, or now with
+  they're on the list; hovering a name in chat shows it too. It uses the M5 Shitters database
+  out of the box; right-click it to change **Database** to another link: a Google Sheet,
+  Pastebin, GitHub file, or any JSON, CSV or text with a username or UUID and a reason per
+  player. Players listed by UUID have their current names looked up from Mojang (a couple a
+  second, saved in `config/frost-uuid-names.json` and rechecked every few days), so their names
+  go red as they come in. It reloads every 15 minutes, or now with
   **Reload List** or `/frost shitters reload`. `/frost shitters add <name> <reason>` and
   `remove <name>` keep your own additions on top of it, and `/frost shitters reason <name>`
   and `list` show what's on it.

@@ -4,7 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ShitterDatabaseTest {
-    private fun parse(text: String) = ShitterDatabase.parse(text).associate { it.name to it.reason }
+    private fun parse(text: String): Map<String, String> =
+        ShitterDatabase.parse(text).mapNotNull { record -> record.name?.let { it to record.reason } }.toMap()
 
     @Test
     fun `a JSON list of players, by any of the usual key names`() {
@@ -51,6 +52,47 @@ class ShitterDatabaseTest {
     @Test
     fun `the same player twice is kept once, whatever the case`() {
         assertEquals(listOf("Steve"), ShitterDatabase.parse("Steve, one\nSTEVE, two").map { it.name })
+    }
+
+    private val dashed = "069a79f4-44e9-4726-a5be-fca90e38aaf5"
+    private val plain = "069a79f444e94726a5befca90e38aaf5"
+    private val other = "853c80ef3c3749fdaa49938b674adae6"
+
+    private fun byUuid(text: String): Map<String, String> =
+        ShitterDatabase.parse(text).mapNotNull { record -> record.uuid?.let { it to record.reason } }.toMap()
+
+    @Test
+    fun `players listed by UUID, with or without dashes, in any of the usual shapes`() {
+        val expected = mapOf(plain to "Left at P3", other to "Griefed")
+        assertEquals(expected, byUuid("""[{"uuid": "$dashed", "reason": "Left at P3"}, {"id": "$other", "note": "Griefed"}]"""))
+        assertEquals(expected, byUuid("""{"$dashed": "Left at P3", "$other": {"reason": "Griefed"}}"""))
+        assertEquals(expected, byUuid("""{"players": [["$dashed", "Left at P3"], ["$other", "Griefed"]]}"""))
+        assertEquals(expected, byUuid("$dashed - Left at P3\n$other, Griefed"))
+        assertEquals(mapOf(plain to ShitterDatabase.NO_REASON), byUuid("""["$dashed"]"""))
+    }
+
+    @Test
+    fun `a name given alongside a UUID is kept, and reasons in a list are joined`() {
+        val record = ShitterDatabase.parse("""[{"uuid": "$plain", "name": "Steve", "reasons": ["Left", "Lied"]}]""").single()
+        assertEquals(ShitterRecord("Steve", plain, "Left; Lied"), record)
+    }
+
+    @Test
+    fun `a spreadsheet with a UUID column`() {
+        assertEquals(mapOf(plain to "Left"), byUuid("UUID,Reason\n$dashed,Left"))
+    }
+
+    @Test
+    fun `the same UUID twice is kept once, dashes or not`() {
+        assertEquals(1, ShitterDatabase.parse("""["$dashed", "$plain", "${plain.uppercase()}"]""").size)
+    }
+
+    @Test
+    fun `UUIDs are normalized to lowercase without dashes, and anything else isn't one`() {
+        assertEquals(plain, ShitterDatabase.normalizeUuid(dashed.uppercase()))
+        assertEquals(plain, ShitterDatabase.normalizeUuid(plain))
+        assertEquals(null, ShitterDatabase.normalizeUuid("Steve"))
+        assertEquals(null, ShitterDatabase.normalizeUuid("069a79f4-44e9-4726-a5be"))
     }
 
     @Test
