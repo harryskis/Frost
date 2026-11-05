@@ -21,6 +21,7 @@ import com.frost.dungeon.AimAssist
 import com.frost.dungeon.FunnyMapLayout
 import com.frost.dungeon.KeyPickup
 import com.frost.dungeon.MapStyle
+import com.frost.gui.map.NaRoomText
 import com.frost.shitters.M5Shitters
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
@@ -379,6 +380,13 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                     MapStyle.entries.map { it.label },
                     { ModConfig.getMapStyle().ordinal },
                     { ModConfig.setMapStyle(MapStyle.entries[it]) },
+                ),
+                SelectorSetting(
+                    "NA Room Text",
+                    "What the NA style writes on rooms, as NoammAddons' own Checkmark Style setting: checkmarks, secrets, names, or names and secrets.",
+                    NaRoomText.entries.map { it.label },
+                    { ModConfig.getNaRoomText().ordinal },
+                    { ModConfig.setNaRoomText(NaRoomText.entries[it]) },
                 ),
                 ToggleSetting(
                     "Blood Rush Path",

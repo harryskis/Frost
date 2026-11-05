@@ -21,8 +21,23 @@ data class MapPaintOptions(
     val filledRoomTypes: Set<String> = setOf("BLOOD"),
     val fillColor: Int = 0xFF2E96DC.toInt(),
     val backgroundColor: Int = 0xB0080B10.toInt(),
+    val naRoomText: NaRoomText = NaRoomText.NAME_AND_SECRETS,
 ) {
     fun showsName(roomType: String): Boolean = roomType !in hiddenNameTypes
+}
+
+/** What the NA style writes on rooms - NoammAddons' "Checkmark Style" choices. */
+enum class NaRoomText(val label: String) {
+    CHECKMARKS("Checkmarks"),
+    SECRETS("Secrets"),
+    ROOM_NAME("Room Name"),
+    NAME_AND_SECRETS("Room Name + Secrets"),
+    SECRETS_AND_PUZZLE_NAME("Secrets + Puzzle Name"),
+    ;
+
+    companion object {
+        fun fromName(name: String?): NaRoomText = entries.firstOrNull { it.name == name } ?: NAME_AND_SECRETS
+    }
 }
 
 /**
@@ -509,18 +524,64 @@ internal object NaPainter : StylePainter(MapStyle.NA) {
         return if (darken) scaleRgb(color, UNDISCOVERED_TINT) else color
     }
 
+    private val TEXT_GREEN = rgb(85, 255, 85)
+    private val TEXT_FAILED = rgb(255, 0, 0)
+    private val TEXT_PENDING_NA = rgb(170, 170, 170)
+
+    // NA shrinks names to fit their rooms, but no further than this.
+    private const val MIN_TEXT_SCALE = 0.39f
+
     override fun drawLabels(canvas: MapCanvas, map: FunnyMapSnapshot, options: MapPaintOptions, hints: Set<GridPos>) {
         val iconSize = ICON_SIZE * options.textSize
         for ((room, tiles) in FunnyMapLayout.groupRooms(map.rooms)) {
-            if (room.type == "ENTRANCE" || room.type == "FAIRY" || !isOpened(tiles, map)) continue
-            val icon = checkmarkIcon(map.checkmarks[room]) ?: continue
+            if (room.type == "ENTRANCE" || room.type == "FAIRY") continue
+            val opened = isOpened(tiles, map)
             val (x, z) = labelCenter(tiles)
-            drawIcon(canvas, icon, x, z, iconSize)
+            val mode = when (options.naRoomText) {
+                NaRoomText.SECRETS_AND_PUZZLE_NAME -> if (room.type == "PUZZLE" || room.secrets == 0) NaRoomText.ROOM_NAME else NaRoomText.SECRETS
+                else -> options.naRoomText
+            }
+            if (mode == NaRoomText.CHECKMARKS) {
+                // Nothing for rooms nobody has found yet, as on NA's Cheater Map.
+                if (opened) checkmarkIcon(map.checkmarks[room])?.let { drawIcon(canvas, it, x, z, iconSize) }
+                continue
+            }
+            // Its text modes write on unopened rooms in Funny too, in gray.
+            val color = when (map.checkmarks[room]?.takeIf { opened }) {
+                MapCheckmark.GREEN -> TEXT_GREEN
+                MapCheckmark.RED -> TEXT_FAILED
+                MapCheckmark.WHITE -> WHITE
+                else -> TEXT_PENDING_NA
+            }
+            val secrets = "${map.secretsFound(room)}/${room.secrets}"
+            if (mode == NaRoomText.SECRETS) {
+                drawLines(canvas, listOf((if (room.secrets == 0) "0" else secrets) to color), x, z, options.textSize)
+                continue
+            }
+            val lines = room.name.split(' ') + listOfNotNull(secrets.takeIf { mode == NaRoomText.NAME_AND_SECRETS && room.secrets > 0 })
+            drawLines(canvas, lines.map { it to color }, x, z, textScale(canvas, lines, tiles, options.textSize))
         }
         for (tile in hints) {
             val (x, z) = cellCenter(tile)
             drawIcon(canvas, MapIcon.QUESTION, x, z, iconSize)
         }
+    }
+
+    /** As big as [maxScale], shrunk until every line fits the room across and all of them fit
+     * down it. Like NA, an L is two rooms wide and one tall, and a 2x2 two by two, gaps left out. */
+    private fun textScale(canvas: MapCanvas, lines: List<String>, tiles: Set<GridPos>, maxScale: Float): Float {
+        val cell = geometry.cellSize
+        val spanX = tiles.maxOf { it.x } - tiles.minOf { it.x } + 1
+        val spanZ = tiles.maxOf { it.z } - tiles.minOf { it.z } + 1
+        val (maxWidth, maxHeight) = when {
+            tiles.size == 3 && spanX == 2 && spanZ == 2 -> cell * 2 to cell
+            spanX == 2 && spanZ == 2 -> cell * 2 to cell * 2
+            else -> spanX * cell + (spanX - 1) * geometry.gapSize to spanZ * cell + (spanZ - 1) * geometry.gapSize
+        }
+        val widest = lines.maxOf { canvas.textWidth(it) }.toFloat()
+        val tall = (lines.size * canvas.lineHeight).toFloat()
+        if (widest <= 0f || tall <= 0f) return maxScale
+        return minOf(maxWidth / widest, maxHeight / tall).coerceIn(MIN_TEXT_SCALE, maxScale)
     }
 }
 

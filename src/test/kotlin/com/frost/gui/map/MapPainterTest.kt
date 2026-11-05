@@ -139,18 +139,49 @@ class MapPainterTest {
         assertEquals(rgb(0, 124, 0), doorColor(paint(MapStyle.NA, PreviewDungeon.legit), MapStyle.NA, entranceDoor))
     }
 
+    private val naCheckmarks = MapPaintOptions(naRoomText = NaRoomText.CHECKMARKS)
+
     @Test
-    fun `only Frost draws no icons, and only NA draws no names`() {
+    fun `only Frost draws no icons, and NA draws names unless set to checkmarks`() {
         for (map in modes) {
             assertTrue(paint(MapStyle.FROST, map).icons.isEmpty())
-            assertTrue(paint(MapStyle.NA, map).texts.isEmpty())
-            for (style in listOf(MapStyle.FROST, MapStyle.ODIN, MapStyle.LCM)) assertTrue(paint(style, map).texts.any { it.text == "Crypt" }, "$style")
+            assertTrue(paint(MapStyle.NA, map, naCheckmarks).texts.isEmpty())
+            for (style in MapStyle.entries) assertTrue(paint(style, map).texts.any { it.text == "Crypt" }, "$style")
         }
     }
 
     @Test
-    fun `NA marks finished rooms with a checkmark in their middle, and a failed puzzle with a cross`() {
+    fun `NA writes names and secrets by default, shrunk to fit, colored by progress`() {
         val canvas = paint(MapStyle.NA, PreviewDungeon.legit)
+        val crypt = canvas.textsSaying("Crypt").single()
+        assertEquals(rgb(255, 255, 255), crypt.color)
+        assertEquals(crypt.scale, canvas.textsSaying("3/5").single().scale)
+        // "Crypt" and "3/5" at 6 pixels a letter, in a 1x2 room 36 pixels wide and 16 tall: the
+        // height is what limits it - two lines of 9.
+        assertEquals(16f / 18, crypt.scale, 0.001f)
+        assertEquals(rgb(85, 255, 85), canvas.textsSaying("Admin").single().color)
+        assertEquals(rgb(255, 0, 0), canvas.textsSaying("Ice").single().color)
+        assertEquals(rgb(170, 170, 170), canvas.textsSaying("Mines").single().color)
+        assertTrue(canvas.texts.none { it.text == "Entrance" || it.text == "Fairy" })
+        // Question marks still go on rooms behind unopened doors, and the gray names on Funny's.
+        assertTrue(canvas.icons.any { it.icon == MapIcon.QUESTION })
+        assertEquals(rgb(170, 170, 170), paint(MapStyle.NA, PreviewDungeon.funny).textsSaying("Waterfall").single().color)
+    }
+
+    @Test
+    fun `NA's other modes write just names, just secrets, or secrets except on puzzles`() {
+        val names = paint(MapStyle.NA, PreviewDungeon.legit, MapPaintOptions(naRoomText = NaRoomText.ROOM_NAME))
+        assertTrue(names.texts.any { it.text == "Crypt" } && names.texts.none { it.text == "3/5" })
+        val secrets = paint(MapStyle.NA, PreviewDungeon.legit, MapPaintOptions(naRoomText = NaRoomText.SECRETS))
+        assertTrue(secrets.texts.any { it.text == "3/5" } && secrets.texts.none { it.text == "Crypt" })
+        assertEquals(listOf("0"), secrets.texts.filter { it.text == "0" }.map { it.text }.distinct())
+        val mixed = paint(MapStyle.NA, PreviewDungeon.legit, MapPaintOptions(naRoomText = NaRoomText.SECRETS_AND_PUZZLE_NAME))
+        assertTrue(mixed.texts.any { it.text == "3/5" } && mixed.texts.any { it.text == "Ice" } && mixed.texts.none { it.text == "Crypt" })
+    }
+
+    @Test
+    fun `NA marks finished rooms with a checkmark in their middle, and a failed puzzle with a cross`() {
+        val canvas = paint(MapStyle.NA, PreviewDungeon.legit, naCheckmarks)
         val iceFill = GridPos(0, 3)
         val cross = canvas.icons.single { it.icon == MapIcon.CROSS }
         assertEquals(center(MapStyle.NA, iceFill.x).toFloat(), cross.centerX)
@@ -160,7 +191,7 @@ class MapPainterTest {
         assertEquals(3, canvas.icons.count { it.icon == MapIcon.GREEN_CHECK })
         assertEquals(4, canvas.icons.count { it.icon == MapIcon.WHITE_CHECK })
         // Nothing on rooms in Funny that nobody has found yet.
-        assertEquals(canvas.icons.count { it.icon != MapIcon.QUESTION }, paint(MapStyle.NA, PreviewDungeon.funny).icons.count { it.icon != MapIcon.QUESTION })
+        assertEquals(canvas.icons.count { it.icon != MapIcon.QUESTION }, paint(MapStyle.NA, PreviewDungeon.funny, naCheckmarks).icons.count { it.icon != MapIcon.QUESTION })
     }
 
     @Test

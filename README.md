@@ -35,7 +35,8 @@ column's header to collapse it, or use the search bar at the bottom.
   toggles it; right-click opens its menu: **Edit Map** to drag it around (hold it and scroll to
   resize), **Map Style** to draw it as Frost's own map or like NoammAddons' (**NA**), Odin's
   or LegitCatMod's (**LCM**), each with that mod's colors, borders, doors, checkmarks and
-  heads, in Legit and Funny alike, **Blood Rush Path** for a line showing the way to the blood door until it's opened,
+  heads, in Legit and Funny alike, **NA Room Text** for what the NA style writes on rooms
+  (checkmarks, secrets, names, or names and secrets, as NoammAddons' own setting), **Blood Rush Path** for a line showing the way to the blood door until it's opened,
   **Total Secrets** for a line under the map with the team's secrets out of the dungeon's total,
   worked out from the tab list, **Limit Room Names** to shrink long names to fit their rooms, **Special Room Names** to hide the
   names of blood, fairy, entrance, miniboss or trap rooms, **Fill Completed Rooms** to fill rooms

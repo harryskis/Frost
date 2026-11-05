@@ -2,6 +2,7 @@ package com.frost.config
 
 import com.frost.dungeon.FunnyMapLayout
 import com.frost.dungeon.MapStyle
+import com.frost.gui.map.NaRoomText
 import com.google.gson.GsonBuilder
 import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
@@ -108,6 +109,8 @@ data class ModConfigData(
     // Which look the map is drawn in, by com.frost.dungeon.MapStyle name: Frost's own, or one
     // replicating another mod's map.
     var mapStyle: String = MapStyle.FROST.name,
+    // What the NA style writes on rooms, by com.frost.gui.map.NaRoomText name.
+    var naRoomText: String = NaRoomText.NAME_AND_SECRETS.name,
     // Draws the route from the entrance to the blood door on Funny Map.
     var bloodRushPathEnabled: Boolean = false,
     // On: a long room name shrinks to fit its room. Off: every name is the same size, even if
@@ -583,6 +586,9 @@ object ModConfig {
         if (removed.isNotEmpty()) save(config)
         return removed.isNotEmpty()
     }
+
+    fun getNaRoomText(): NaRoomText = NaRoomText.fromName(get().naRoomText)
+    fun setNaRoomText(text: NaRoomText) = update { it.naRoomText = text.name }
 
     fun getMapStyle(): MapStyle = MapStyle.fromName(get().mapStyle)
     fun setMapStyle(style: MapStyle) {

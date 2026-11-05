@@ -57,6 +57,7 @@ object FunnyMapRenderer {
         filledRoomTypes = ModConfig.getFilledRoomTypes(),
         fillColor = ModConfig.getFillCompletedColor(),
         backgroundColor = ModConfig.getMapBackgroundColor(),
+        naRoomText = ModConfig.getNaRoomText(),
     )
 
     /** The map's on-screen width at [scale]. */
