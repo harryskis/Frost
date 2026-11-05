@@ -609,6 +609,80 @@ class ChoiceSetting(
     }
 }
 
+/** A text label with the current choice beside it, which clicks open to the full list of
+ * [choices] beneath. Clicking one picks it and closes the list again. */
+class SelectorSetting(
+    name: String,
+    description: String,
+    private val choices: List<String>,
+    private val getter: () -> Int,
+    private val setter: (Int) -> Unit,
+) : GuiSetting(name, description) {
+    private var open = false
+    private val anim = GuiAnimation(false, OPEN_MILLIS)
+
+    private val listHeight get() = choices.size * ClickGuiLayout.SUB_ROW_HEIGHT
+    override val height: Int get() = ClickGuiLayout.ROW_HEIGHT + (listHeight * anim.value).toInt()
+
+    private fun choiceAt(mouseY: Double): Int? {
+        val index = ((mouseY - y - ClickGuiLayout.ROW_HEIGHT) / ClickGuiLayout.SUB_ROW_HEIGHT).toInt()
+        return index.takeIf { mouseY >= y + ClickGuiLayout.ROW_HEIGHT && it in choices.indices }
+    }
+
+    override fun render(frame: GuiFrame) {
+        anim.update(open, frame.dtMillis)
+        val context = frame.context
+        drawLabel(frame, rowHeight = ClickGuiLayout.ROW_HEIGHT)
+        val chevronX = x + width - ClickGuiLayout.PADDING - CHEVRON_WIDTH
+        drawChevron(context, chevronX, y + ClickGuiLayout.ROW_HEIGHT / 2 - 1, open, ClickGuiColors.TEXT_DIM)
+        val current = choices[getter().coerceIn(choices.indices)]
+        val headerHovered = isOver(frame.mouseX.toDouble(), frame.mouseY.toDouble()) && frame.mouseY < y + ClickGuiLayout.ROW_HEIGHT
+        val currentLeft = chevronX - CHEVRON_GAP - frame.font.width(current)
+        context.text(frame.font, current, currentLeft, y + (ClickGuiLayout.ROW_HEIGHT - 8) / 2, if (headerHovered) ClickGuiColors.TEXT else ClickGuiColors.TEXT_DIM, false)
+
+        if (anim.value <= 0f) return
+        val top = y + ClickGuiLayout.ROW_HEIGHT
+        context.enableScissor(x, top, x + width, y + height)
+        val hovered = if (anim.isSettled && isOver(frame.mouseX.toDouble(), frame.mouseY.toDouble())) choiceAt(frame.mouseY.toDouble()) else null
+        choices.forEachIndexed { index, choice ->
+            val rowTop = top + index * ClickGuiLayout.SUB_ROW_HEIGHT
+            val left = x + ClickGuiLayout.PADDING + ClickGuiLayout.SUB_INDENT
+            val right = x + width - ClickGuiLayout.PADDING
+            val selected = index == getter()
+            if (selected || index == hovered) {
+                context.softFill(left - OPTION_INSET, rowTop + 1, right, rowTop + ClickGuiLayout.SUB_ROW_HEIGHT - 1, if (index == hovered) ClickGuiColors.SURFACE_HOVER else ClickGuiColors.SURFACE)
+            }
+            if (selected) context.fill(left - OPTION_INSET, rowTop + 1, left - OPTION_INSET + MARKER_WIDTH, rowTop + ClickGuiLayout.SUB_ROW_HEIGHT - 1, ClickGuiColors.ACCENT)
+            context.text(frame.font, choice, left + MARKER_WIDTH, rowTop + (ClickGuiLayout.SUB_ROW_HEIGHT - 8) / 2, if (selected) ClickGuiColors.TEXT else ClickGuiColors.TEXT_DIM, false)
+        }
+        context.disableScissor()
+    }
+
+    override fun mouseClicked(event: MouseButtonEvent, screen: ClickGuiScreen): Boolean {
+        if (!isOver(event.x(), event.y()) || !screen.isLeft(event)) return false
+        if (event.y() < y + ClickGuiLayout.ROW_HEIGHT) {
+            open = !open
+            screen.playClick()
+            return true
+        }
+        if (!open || !anim.isSettled) return false
+        val index = choiceAt(event.y()) ?: return false
+        setter(index)
+        open = false
+        screen.playClick()
+        return true
+    }
+
+    override fun searchNames(): List<String> = listOf(name) + choices
+
+    private companion object {
+        const val OPEN_MILLIS = 160f
+        const val CHEVRON_GAP = 5
+        const val OPTION_INSET = 4
+        const val MARKER_WIDTH = 2
+    }
+}
+
 /** A row that opens a group of smaller rows beneath it, nested inside a feature's dropdown. */
 class DropdownSetting(name: String, description: String, private val children: List<GuiSetting>) : GuiSetting(name, description) {
     private var open = false

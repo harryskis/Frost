@@ -10,6 +10,8 @@ import com.frost.config.MIN_MAP_ELEMENT_SIZE
 import com.frost.config.ModConfig
 import com.frost.dungeon.AimAssist
 import com.frost.dungeon.FunnyMapLayout
+import com.frost.dungeon.MapStyle
+import com.frost.shitters.M5Shitters
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -244,7 +246,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
     private fun buildPanels(): List<GuiPanel> = listOf(
         GuiPanel(
             "Dungeons",
-            listOf(contributionsFeature(), aimAssistFeature(), dungeonMapFeature(), funnyMapFeature(), glassDoorsFeature(), starMobEspFeature(), fairyDoorEspFeature(), m5AutoUltFeature(), leapFixFeature(), croesusFeature()),
+            listOf(contributionsFeature(), aimAssistFeature(), dungeonMapFeature(), funnyMapFeature(), glassDoorsFeature(), starMobEspFeature(), fairyDoorEspFeature(), m5AutoUltFeature(), m5ShittersFeature(), leapFixFeature(), croesusFeature()),
         ),
         GuiPanel(
             "Quality of Life",
@@ -361,6 +363,13 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
             ModConfig::setFunnyMapEnabled,
             listOf(
                 ActionSetting("Edit Map", "Drag the map to move it. Hold it and scroll to resize.") { open(FunnyMapMoveScreen(this)) },
+                SelectorSetting(
+                    "Map Style",
+                    "How the map looks. Frost is Frost's own; NA, Odin and LCM look like NoammAddons', Odin's and LegitCatMod's dungeon maps. Works with Funny Map on or off.",
+                    MapStyle.entries.map { it.label },
+                    { ModConfig.getMapStyle().ordinal },
+                    { ModConfig.setMapStyle(MapStyle.entries[it]) },
+                ),
                 ToggleSetting(
                     "Blood Rush Path",
                     "A line following the wither doors toward blood. Green reaches the blood door. Yellow goes as far as what's loaded so far.",
@@ -375,14 +384,14 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                 ),
                 ToggleSetting(
                     "Limit Room Names",
-                    "On: long names shrink to fit their rooms. Off: every name is the same size and can spill out.",
+                    "On: long names shrink to fit their rooms. Off: every name is the same size and can spill out. Frost style only - the others keep their own mod's text.",
                     ModConfig::isLimitRoomNamesEnabled,
                     ModConfig::setLimitRoomNamesEnabled,
                 ),
                 DropdownSetting("Special Room Names", "Choose which special rooms show their names.", specialRoomToggles),
                 ToggleSetting(
                     "Fill Completed Rooms",
-                    "Fills a room with a solid color once it's cleared and all its secrets are found.",
+                    "Fills a room with a solid color once it's cleared and all its secrets are found. Frost style only.",
                     ModConfig::isFillCompletedRoomsEnabled,
                     ModConfig::setFillCompletedRoomsEnabled,
                 ),
@@ -396,7 +405,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                 ),
                 ColorSetting(
                     "Background Color",
-                    "The color behind the map's rooms.",
+                    "The color behind the map's rooms. Frost style only - the others use their own mod's background.",
                     DEFAULT_MAP_BACKGROUND_COLOR,
                     ModConfig::getMapBackgroundColor,
                     ModConfig::setMapBackgroundColor,
@@ -412,7 +421,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                 ),
                 SliderSetting(
                     "Room Text Size",
-                    "How big room names and secret counts are on the map.",
+                    "How big room names, secret counts and checkmarks are on the map.",
                     MIN_MAP_ELEMENT_SIZE,
                     MAX_MAP_ELEMENT_SIZE,
                     "%",
@@ -493,6 +502,25 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
         emptyList(),
     )
 
+    private fun m5ShittersFeature() = GuiFeature(
+        "M5 Shitters",
+        "Shows the names of players on the M5 Shitters list in red, in chat, Party Finder and the tab list. Click a party in Party Finder, or a red name in chat, to see why they're on it.",
+        ModConfig::isM5ShittersEnabled,
+        ModConfig::setM5ShittersEnabled,
+        listOf(
+            TextSetting(
+                "Database",
+                "A link to the list: a Google Sheet, Pastebin, GitHub file, or any JSON, CSV or text. Players added with /frost shitters add are on it too.",
+                SHITTERS_URL_MAX_LENGTH,
+                ModConfig::getM5ShittersUrl,
+            ) { url ->
+                ModConfig.setM5ShittersUrl(url)
+                M5Shitters.onUrlEdited()
+            },
+            ActionSetting("Reload List", "Fetches the list again now. It also updates on its own every 15 minutes.") { M5Shitters.reload() },
+        ),
+    )
+
     private fun leapFixFeature() = GuiFeature(
         "Leap Fix",
         "After a spirit leap, turns you to face the same way as the player you leaped to.",
@@ -560,5 +588,6 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
 
         private const val SPOTIFY_ID_MAX_LENGTH = 64
         private const val CHAT_CHANNEL_MAX_LENGTH = 16
+        private const val SHITTERS_URL_MAX_LENGTH = 512
     }
 }

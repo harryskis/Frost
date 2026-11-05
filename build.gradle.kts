@@ -58,6 +58,12 @@ tasks.processResources {
     }
 }
 
+// The BSD licenses of the mods Frost ports code and icons from ask for their notices to ship
+// with the mod itself, not just its source.
+tasks.jar {
+    from("LICENSE", "THIRD_PARTY_NOTICES.md")
+}
+
 tasks.test {
     useJUnitPlatform()
 }

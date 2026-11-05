@@ -188,8 +188,11 @@ object FunnyMapLayout {
     /** The world x or z of a position in tile units, where a whole number is that tile's center. */
     fun tileToWorld(tile: Double): Double = tile * WORLD_TILE_SIZE + WORLD_ORIGIN + WORLD_TILE_SIZE / 2
 
+    /** A world x or z coordinate in tile units, where a tile's center is its index + 0.5. */
+    fun worldToTileUnits(coordinate: Double): Double = (coordinate - WORLD_ORIGIN) / WORLD_TILE_SIZE
+
     /** Where a world x or z coordinate lands on the map, in GUI pixels from the map's edge. */
-    fun worldToMap(coordinate: Double): Double = (coordinate - WORLD_ORIGIN) / WORLD_TILE_SIZE * TILE_PITCH
+    fun worldToMap(coordinate: Double): Double = worldToTileUnits(coordinate) * TILE_PITCH
 
     /** The left/top edge of a tile's cell, in GUI pixels from the map's edge - half a gap in,
      * so a tile's world center lands on its cell's center. */

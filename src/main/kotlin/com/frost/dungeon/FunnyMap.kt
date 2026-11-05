@@ -6,6 +6,8 @@ import com.frost.gui.FunnyMapMoveScreen
 import com.frost.gui.FunnyMapRenderer
 import com.frost.parsing.ActionBarParser
 import com.frost.parsing.TabListParser
+import com.frost.util.SkyblockItems
+import com.frost.util.TextUtils
 import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry
@@ -99,6 +101,9 @@ object FunnyMap {
     private var teammateMarkers: Map<String, DungeonMapReader.Marker> = emptyMap()
     private val teammateSkins = HashMap<String, PlayerSkin>()
 
+    // Each member's class by name, the local player's included, for the styles that color heads by it.
+    private val partyClasses = HashMap<String, String>()
+
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { client -> onTick(client) }
         HudElementRegistry.addLast(HUD_ID) { context, _ -> drawHud(context) }
@@ -109,6 +114,10 @@ object FunnyMap {
         if (!inCatacombs) return
         partyNames = lines.mapNotNullTo(mutableSetOf()) { TabListParser.parseMemberName(it) }
         aliveParty = lines.filterNot(TabListParser::isMemberDead).mapNotNull { TabListParser.parseMemberName(it) }
+        for (line in lines) {
+            val name = TabListParser.parseMemberName(line) ?: continue
+            TabListParser.parseMemberClass(line)?.let { partyClasses[name] = it }
+        }
         lines.firstNotNullOfOrNull(TabListParser::parseSecretsFound)?.let { teamSecrets = it }
         lines.firstNotNullOfOrNull(TabListParser::parseSecretsPercent)?.let { secretsPercent = it }
         val connection = Minecraft.getInstance().connection ?: return
@@ -211,6 +220,7 @@ object FunnyMap {
             partyNames = emptySet()
             aliveParty = emptyList()
             teammateMarkers = emptyMap()
+            partyClasses.clear()
             inCatacombs = false
             starMobs.clear()
         }
@@ -320,7 +330,15 @@ object FunnyMap {
         val current = snapshot()
         FunnyMapRenderer.draw(context, client.font, x, y, scale, current)
         if (ModConfig.isFunnyModeEnabled()) FunnyMapRenderer.drawStarMobs(context, x, y, scale, starMobs)
-        FunnyMapRenderer.drawPlayers(context, x, y, scale, level, player, partyNames, teammateMarkers)
+        val party = FunnyMapRenderer.Party(partyNames, teammateMarkers, partyClasses, ModConfig.getMapStyle().namesWhileLeaping && isLeaping(client))
+        FunnyMapRenderer.drawPlayers(context, client.font, x, y, scale, level, player, party)
+    }
+
+    /** Holding a spirit leap, or in its menu - when Odin and dtMap write names under the heads. */
+    private fun isLeaping(client: Minecraft): Boolean {
+        val title = client.gui.screen()?.title?.string?.let(TextUtils::stripFormatting)
+        if (title == "Spirit Leap" || title == "Teleport to Player") return true
+        return client.player?.mainHandItem?.let(SkyblockItems::isSpiritLeap) == true
     }
 
     private fun snapshot(): FunnyMapSnapshot {

@@ -7,6 +7,8 @@ import net.minecraft.world.item.ItemStack
 object SkyblockItems {
     private const val ASPECT_OF_THE_VOID_ID = "ASPECT_OF_THE_VOID"
     private const val ASPECT_OF_THE_VOID_NAME = "Aspect of the Void"
+    private val SPIRIT_LEAP_IDS = setOf("SPIRIT_LEAP", "INFINITE_SPIRIT_LEAP")
+    private const val SPIRIT_LEAP_NAME = "Spirit Leap"
 
     /** Hypixel's internal Skyblock item ID from custom data, or null if the item has none. */
     fun skyblockId(stack: ItemStack): String? =
@@ -20,5 +22,12 @@ object SkyblockItems {
     fun isAspectOfTheVoid(stack: ItemStack): Boolean {
         skyblockId(stack)?.let { return it == ASPECT_OF_THE_VOID_ID }
         return TextUtils.stripFormatting(stack.hoverName.string).contains(ASPECT_OF_THE_VOID_NAME, ignoreCase = true)
+    }
+
+    /** A Spirit Leap or Infinileap, by ID - or by name on servers whose items have none. */
+    fun isSpiritLeap(stack: ItemStack): Boolean {
+        skyblockId(stack)?.let { return it in SPIRIT_LEAP_IDS }
+        val name = TextUtils.stripFormatting(stack.hoverName.string)
+        return name.contains(SPIRIT_LEAP_NAME, ignoreCase = true) || name.contains("Infinileap", ignoreCase = true)
     }
 }

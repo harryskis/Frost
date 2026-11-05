@@ -87,7 +87,8 @@ class FunnyMapMoveScreen(private val parent: Screen?) : Screen(Component.literal
     override fun extractBackground(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {}
 
     override fun extractRenderState(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        FunnyMapRenderer.draw(context, font, mapX, mapY, mapScale, FunnyMap.currentSnapshot() ?: FunnyMapLayout.sample)
+        val sample = if (ModConfig.isFunnyModeEnabled()) FunnyMapLayout.sample else FunnyMapLayout.legitView(FunnyMapLayout.sample)
+        FunnyMapRenderer.draw(context, font, mapX, mapY, mapScale, FunnyMap.currentSnapshot() ?: sample)
         super.extractRenderState(context, mouseX, mouseY, delta)
         val hint = "Drag to move, hold and scroll to resize (${(mapScale * 100).roundToInt()}%)"
         context.centeredText(font, hint, width / 2, height - DONE_MARGIN - font.lineHeight - HINT_GAP, FrostTheme.TEXT_PRIMARY)

@@ -108,6 +108,16 @@ class DungeonMapReaderTest {
     }
 
     @Test
+    fun `a failed puzzle's red cross is read, but the blood room's red fill isn't`() {
+        val layout = DungeonMapReader.PixelLayout(16, 5, 5)
+        val puzzle = GridPos(1, 1)
+        val blood = GridPos(4, 4)
+        val colors = mapWith(layout, puzzle to RoomType.PUZZLE.colorId, blood to RoomType.BLOOD.colorId)
+        paintIcon(colors, layout, puzzle, 7, 7, MapCheckmark.RED.colorId)
+        assertEquals(mapOf(puzzle to MapCheckmark.RED), DungeonMapReader.checkmarks(colors, layout))
+    }
+
+    @Test
     fun `the entrance's own green fill isn't a checkmark`() {
         val layout = DungeonMapReader.PixelLayout(16, 5, 5)
         assertEquals(emptyMap(), DungeonMapReader.checkmarks(mapWith(layout, GridPos(2, 5) to entrance), layout))

@@ -33,13 +33,16 @@ column's header to collapse it, or use the search bar at the bottom.
   the rooms that have been opened, with party members shown as skin heads that turn with them.
   Names turn green when a room is cleared and secret counts when they're all found. Left-click
   toggles it; right-click opens its menu: **Edit Map** to drag it around (hold it and scroll to
-  resize), **Blood Rush Path** for a line showing the way to the blood door until it's opened,
+  resize), **Map Style** to draw it as Frost's own map or like NoammAddons' (**NA**), Odin's
+  or LegitCatMod's (**LCM**), each with that mod's colors, borders, doors, checkmarks and
+  heads, in Legit and Funny alike, **Blood Rush Path** for a line showing the way to the blood door until it's opened,
   **Total Secrets** for a line under the map with the team's secrets out of the dungeon's total,
   worked out from the tab list, **Limit Room Names** to shrink long names to fit their rooms, **Special Room Names** to hide the
   names of blood, fairy, entrance, miniboss or trap rooms, **Fill Completed Rooms** to fill rooms
   with a solid color once both are done, **Filled Room Types** to include blood, miniboss, trap
   and puzzle rooms in that, **Fill Color** and **Background Color** color pickers, and **Player
-  Head Size** and **Room Text Size** sliders.
+  Head Size** and **Room Text Size** sliders. Fill Completed Rooms, Limit Room Names and the
+  color pickers are part of the Frost style; the other styles keep their own mod's look.
 - **Funny Map** (`/frost` -> Dungeons -> Funny Map) - shows every room on Dungeon Map before it's
   discovered, read from the world itself, dimmed until someone opens it. Only shows what your
   client has loaded, so far rooms stay blank until you get closer. Right-click for **Toggle
@@ -58,6 +61,15 @@ column's header to collapse it, or use the search bar at the bottom.
   way as the player you leaped to.
 - **Fairy Door ESP** (`/frost` -> Dungeons -> Fairy Door ESP) - highlights the wither door out of
   the fairy room through walls, so you can see which way to go before you enter.
+- **M5 Shitters** (`/frost` -> Dungeons -> M5 Shitters) - shows the names of players on the
+  M5 Shitters list in red, in chat, in Party Finder and in the tab list. Click a party in Party
+  Finder, or a red name in chat (like the "joined the dungeon group" message), to see why
+  they're on the list; hovering a name in chat shows it too. Right-click it to set
+  **Database**, a link to the list: a Google Sheet, Pastebin, GitHub file, or any JSON, CSV
+  or text with a name and a reason per player. It reloads every 15 minutes, or now with
+  **Reload List** or `/frost shitters reload`. `/frost shitters add <name> <reason>` and
+  `remove <name>` keep your own additions on top of it, and `/frost shitters reason <name>`
+  and `list` show what's on it.
 - **Croesus** (`/frost` -> Dungeons -> Croesus) - tracks your unopened Croesus chests, with a
   movable HUD showing `Unopened Chests: xx/60` and a big red warning at 55 or more. The real
   count is read in the Dungeon Hub, and each run you finish adds one until you're back there.

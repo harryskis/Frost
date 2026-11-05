@@ -79,10 +79,11 @@ object DungeonMapReader {
         }
 
     /**
-     * Every tile showing a white (cleared) or green (secrets done too) checkmark. The icon's
-     * position within a cell varies - see [RoomGrid.decode] - so the whole cell is searched.
-     * Pixels matching the room's own color are skipped, because green shares its color with the
-     * entrance room's fill, which would otherwise read as permanently finished.
+     * Every tile showing a white (cleared) or green (secrets done too) checkmark, or the red
+     * cross of a failed puzzle. The icon's position within a cell varies - see [RoomGrid.decode] -
+     * so the whole cell is searched. Pixels matching the room's own color are skipped, because
+     * green shares its color with the entrance room's fill, and red with the blood room's, which
+     * would otherwise read as permanently finished or failed.
      */
     fun checkmarks(colors: ByteArray, layout: PixelLayout): Map<GridPos, MapCheckmark> {
         val result = HashMap<GridPos, MapCheckmark>()
@@ -98,6 +99,7 @@ object DungeonMapReader {
                     if (pixel == roomColor) continue
                     if (pixel == MapCheckmark.GREEN.colorId) best = MapCheckmark.GREEN
                     if (pixel == MapCheckmark.WHITE.colorId && best == null) best = MapCheckmark.WHITE
+                    if (pixel == MapCheckmark.RED.colorId && best == null) best = MapCheckmark.RED
                 }
             }
             best?.let { result[tile] = it }

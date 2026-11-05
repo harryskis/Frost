@@ -28,6 +28,7 @@ import com.frost.parsing.ScoreboardParser
 import com.frost.parsing.TabListParser
 import com.frost.session.DungeonSession
 import com.frost.session.PartyMember
+import com.frost.shitters.M5Shitters
 import com.frost.spotify.SpotifyApiClient
 import com.frost.spotify.SpotifyAuth
 import com.frost.summary.RunSummary
@@ -191,6 +192,7 @@ object Frost : ClientModInitializer {
         BloodRushAlert.register()
         M5AutoUlt.register()
         LeapFix.register()
+        M5Shitters.register()
         registerCommands()
     }
 
@@ -318,7 +320,8 @@ object Frost : ClientModInitializer {
                                     },
                             ),
                     )
-                    .then(registerSpotifyCommands()),
+                    .then(registerSpotifyCommands())
+                    .then(M5Shitters.command()),
             )
             dispatcher.register(
                 ClientCommands.literal("pb")

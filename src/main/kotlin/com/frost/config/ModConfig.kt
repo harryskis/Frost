@@ -1,6 +1,7 @@
 package com.frost.config
 
 import com.frost.dungeon.FunnyMapLayout
+import com.frost.dungeon.MapStyle
 import com.google.gson.GsonBuilder
 import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
@@ -104,6 +105,9 @@ data class ModConfigData(
     var funnyMapX: Int = 4,
     var funnyMapY: Int = 4,
     var funnyMapScale: Float = FunnyMapLayout.DEFAULT_SCALE,
+    // Which look the map is drawn in, by com.frost.dungeon.MapStyle name: Frost's own, or one
+    // replicating another mod's map.
+    var mapStyle: String = MapStyle.FROST.name,
     // Draws the route from the entrance to the blood door on Funny Map.
     var bloodRushPathEnabled: Boolean = false,
     // On: a long room name shrinks to fit its room. Off: every name is the same size, even if
@@ -154,6 +158,12 @@ data class ModConfigData(
     // second setting extends that to wither doors.
     var glassDoorsEnabled: Boolean = false,
     var glassWitherDoorsEnabled: Boolean = false,
+    // Players flagged on the M5 Shitters list get their names shown in red - see
+    // com.frost.shitters.M5Shitters. The list comes from the database at m5ShittersUrl, plus
+    // any added here by hand with /frost shitters add, by name, each with its reason.
+    var m5ShittersEnabled: Boolean = false,
+    var m5ShittersUrl: String? = null,
+    var m5ShittersLocal: MutableMap<String, String> = mutableMapOf(),
     // Where each click GUI column has been dragged to, by column name. A column not listed here
     // hasn't been moved, and goes to its default spot.
     var clickGuiPanels: MutableMap<String, ClickGuiPanelState> = mutableMapOf(),
@@ -457,6 +467,46 @@ object ModConfig {
     fun setFairyDoorEspEnabled(enabled: Boolean) {
         val config = get()
         config.fairyDoorEspEnabled = enabled
+        save(config)
+    }
+
+    fun isM5ShittersEnabled(): Boolean = get().m5ShittersEnabled
+    fun setM5ShittersEnabled(enabled: Boolean) {
+        val config = get()
+        config.m5ShittersEnabled = enabled
+        save(config)
+    }
+
+    fun getM5ShittersUrl(): String = get().m5ShittersUrl.orEmpty()
+    fun setM5ShittersUrl(url: String) {
+        val config = get()
+        config.m5ShittersUrl = url.trim().takeIf { it.isNotEmpty() }
+        save(config)
+    }
+
+    /** The players added by hand, by name, with their reasons. */
+    fun getLocalShitters(): Map<String, String> = get().m5ShittersLocal
+
+    fun addLocalShitter(name: String, reason: String) {
+        val config = get()
+        config.m5ShittersLocal.keys.filter { it.equals(name, ignoreCase = true) }.forEach(config.m5ShittersLocal::remove)
+        config.m5ShittersLocal[name] = reason
+        save(config)
+    }
+
+    /** Returns whether [name] was on the hand-added list. */
+    fun removeLocalShitter(name: String): Boolean {
+        val config = get()
+        val removed = config.m5ShittersLocal.keys.filter { it.equals(name, ignoreCase = true) }
+        removed.forEach(config.m5ShittersLocal::remove)
+        if (removed.isNotEmpty()) save(config)
+        return removed.isNotEmpty()
+    }
+
+    fun getMapStyle(): MapStyle = MapStyle.fromName(get().mapStyle)
+    fun setMapStyle(style: MapStyle) {
+        val config = get()
+        config.mapStyle = style.name
         save(config)
     }
 
