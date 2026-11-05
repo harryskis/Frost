@@ -190,5 +190,27 @@ object ShitterDatabase {
         return ShitterRecord(id, null, cleanReason)
     }
 
+    /**
+     * What went wrong fetching the database, in words a player can act on. Java's own messages
+     * mean little to most people - "Unrecognized SSL message, plaintext connection?" really means
+     * something on their network answered in the database's place, usually a filter blocking it.
+     */
+    fun describeFetchError(error: Throwable): String {
+        val causes = generateSequence(error) { it.cause.takeIf { cause -> cause !== it } }.toList()
+        val messages = causes.mapNotNull { it.message }.joinToString(" ")
+        fun has(name: String) = causes.any { it.javaClass.simpleName == name }
+        return when {
+            "plaintext connection" in messages || "Unrecognized SSL message" in messages ->
+                "Something on your network answered instead of the database - it's most likely blocked by a network or DNS filter, antivirus web protection, or a proxy in your launcher. Try opening the link in a browser on this PC."
+            has("UnknownHostException") || has("UnresolvedAddressException") ->
+                "Couldn't find the database's server. Check your internet connection - or it may be blocked on your network."
+            has("SSLHandshakeException") || "PKIX" in messages || "certificate" in messages.lowercase() ->
+                "Couldn't make a secure connection to the database. Antivirus that scans HTTPS, or a network filter, can cause this."
+            has("HttpConnectTimeoutException") || has("HttpTimeoutException") -> "The database took too long to answer."
+            has("ConnectException") -> "Couldn't connect to the database. It may be down, or blocked on your network."
+            else -> causes.lastOrNull { it.message != null }?.let { "${it.javaClass.simpleName}: ${it.message}" } ?: error.javaClass.simpleName
+        }
+    }
+
     const val NO_REASON = "No reason given."
 }

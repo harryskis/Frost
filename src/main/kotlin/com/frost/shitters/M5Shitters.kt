@@ -54,6 +54,7 @@ object M5Shitters {
         .build()
 
     @Volatile private var records: List<ShitterRecord> = emptyList()
+    private var cacheLoadedFor: String? = null
     private var remote: Map<String, ShitterEntry> = emptyMap()
     private var remoteRecords: List<ShitterRecord>? = null
     private var remoteNamesVersion = -1
@@ -193,6 +194,15 @@ object M5Shitters {
             }
             return
         }
+        // The last copy that loaded, used until a fresh one comes in - or for good, if the
+        // database can't be reached from here.
+        if (url != cacheLoadedFor) {
+            cacheLoadedFor = url
+            ShitterCache.load(url)?.let { body ->
+                if (records.isEmpty()) records = ShitterDatabase.parse(body)
+                UuidNames.request(records.mapNotNull { it.uuid })
+            }
+        }
         val now = System.currentTimeMillis()
         val newUrl = url != fetchedUrl && now - urlEditedAt > URL_SETTLE_MILLIS
         if (!fetching && (newUrl || now - lastFetchMillis > REFRESH_MILLIS)) fetch(url, report = false)
@@ -237,11 +247,12 @@ object M5Shitters {
             lastFetchMillis = System.currentTimeMillis()
             val failed = error != null || response.statusCode() !in 200..299
             val outcome = when {
-                error != null -> "§cCouldn't reach the database: ${error.message ?: error.javaClass.simpleName}"
-                response.statusCode() !in 200..299 -> "§cThe database answered with HTTP ${response.statusCode()}."
+                error != null -> "§cCouldn't load the database: ${ShitterDatabase.describeFetchError(error)}" + savedCopyNote(url)
+                response.statusCode() !in 200..299 -> "§cThe database answered with HTTP ${response.statusCode()}." + savedCopyNote(url)
                 else -> {
                     val parsed = ShitterDatabase.parse(response.body())
                     records = parsed
+                    if (parsed.isNotEmpty()) ShitterCache.save(url, response.body())
                     val uuids = parsed.mapNotNull { it.uuid }
                     UuidNames.request(uuids)
                     val unnamed = UuidNames.unresolved(uuids)
@@ -252,9 +263,15 @@ object M5Shitters {
                     }
                 }
             }
-            if (failed) Frost.logger.warn("M5 Shitters fetch from $url failed: $outcome")
+            if (failed) Frost.logger.warn("M5 Shitters fetch from $url failed: $outcome", error)
             if (report) Minecraft.getInstance().execute { message(outcome) }
         }
+    }
+
+    private fun savedCopyNote(url: String): String {
+        val savedAt = ShitterCache.savedAt(url) ?: return " §7No copy has loaded before, so the list is empty for now."
+        val date = java.time.LocalDate.ofInstant(java.time.Instant.ofEpochMilli(savedAt), java.time.ZoneId.systemDefault())
+        return " §7Using the copy saved on $date (${records.size} players) until it loads."
     }
 
     /** Players on the list by UUID who are in this server's player list - the tab list and anyone
@@ -380,4 +397,39 @@ object M5Shitters {
             },
         )
         .then(ClientCommands.literal("reload").executes { reload(); 1 })
+}
+
+/** The last database that loaded, kept in config/frost-shitters-cache.json, so the list still
+ * works while the database can't be reached. */
+private object ShitterCache {
+    private data class Saved(val url: String = "", val savedAt: Long = 0, val body: String = "")
+
+    private val gson = com.google.gson.Gson()
+    private val path = net.fabricmc.loader.api.FabricLoader.getInstance().configDir.resolve("frost-shitters-cache.json")
+    @Volatile private var saved: Saved? = null
+    @Volatile private var read = false
+
+    private fun current(): Saved? {
+        if (!read) {
+            read = true
+            saved = runCatching {
+                java.nio.file.Files.newBufferedReader(path).use { gson.fromJson(it, Saved::class.java) }
+            }.getOrNull()
+        }
+        return saved
+    }
+
+    fun load(url: String): String? = current()?.takeIf { it.url == url && it.body.isNotBlank() }?.body
+
+    fun savedAt(url: String): Long? = current()?.takeIf { it.url == url }?.savedAt
+
+    fun save(url: String, body: String) {
+        val copy = Saved(url, System.currentTimeMillis(), body)
+        saved = copy
+        read = true
+        runCatching {
+            java.nio.file.Files.createDirectories(path.parent)
+            java.nio.file.Files.newBufferedWriter(path).use { gson.toJson(copy, it) }
+        }.onFailure { Frost.logger.warn("Couldn't save $path", it) }
+    }
 }

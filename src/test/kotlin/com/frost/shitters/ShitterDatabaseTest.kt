@@ -96,6 +96,17 @@ class ShitterDatabaseTest {
     }
 
     @Test
+    fun `fetch errors are explained in plain words, however deep Java wrapped them`() {
+        val plaintext = java.util.concurrent.CompletionException(javax.net.ssl.SSLException("Unrecognized SSL message, plaintext connection?"))
+        assert("blocked" in ShitterDatabase.describeFetchError(plaintext))
+        val unknownHost = java.io.IOException("lookup failed", java.net.UnknownHostException("jsonhosting.com"))
+        assert("Couldn't find the database's server" in ShitterDatabase.describeFetchError(unknownHost))
+        assert("secure connection" in ShitterDatabase.describeFetchError(javax.net.ssl.SSLHandshakeException("PKIX path building failed")))
+        assertEquals("took too long", Regex("took too long").find(ShitterDatabase.describeFetchError(java.net.http.HttpTimeoutException("request timed out")))?.value)
+        assertEquals("IllegalStateException: odd", ShitterDatabase.describeFetchError(IllegalStateException("odd")))
+    }
+
+    @Test
     fun `links to pages showing a list are turned into links to the data`() {
         assertEquals(
             "https://docs.google.com/spreadsheets/d/abc_123-XYZ/export?format=csv&gid=42",
