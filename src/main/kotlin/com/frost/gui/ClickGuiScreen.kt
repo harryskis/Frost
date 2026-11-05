@@ -1,6 +1,15 @@
 package com.frost.gui
 
+import com.frost.config.DEFAULT_BLOOD_KEY_COLOR
 import com.frost.config.DEFAULT_FILL_COMPLETED_COLOR
+import com.frost.config.DEFAULT_WITHER_KEY_COLOR
+import com.frost.config.MAX_KEY_NOTIFICATION_SECONDS
+import com.frost.config.MAX_KEY_NOTIFICATION_SIZE
+import com.frost.config.MAX_SOUND_PITCH
+import com.frost.config.MAX_SOUND_VOLUME
+import com.frost.config.MIN_KEY_NOTIFICATION_SECONDS
+import com.frost.config.MIN_KEY_NOTIFICATION_SIZE
+import com.frost.config.MIN_SOUND_PITCH
 import com.frost.config.DEFAULT_MAP_BACKGROUND_COLOR
 import com.frost.config.DEFAULT_STAR_MOB_ESP_COLOR
 import com.frost.config.MAX_AIM_ASSIST_STRENGTH
@@ -10,6 +19,7 @@ import com.frost.config.MIN_MAP_ELEMENT_SIZE
 import com.frost.config.ModConfig
 import com.frost.dungeon.AimAssist
 import com.frost.dungeon.FunnyMapLayout
+import com.frost.dungeon.KeyPickup
 import com.frost.dungeon.MapStyle
 import com.frost.shitters.M5Shitters
 import com.mojang.blaze3d.platform.InputConstants
@@ -194,7 +204,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         val panel = panels.lastOrNull { it.isOver(mouseX / uiScale, mouseY / uiScale) } ?: return false
-        panel.mouseScrolled(scrollY)
+        panel.mouseScrolled(mouseX / uiScale, mouseY / uiScale, query, scrollY)
         return true
     }
 
@@ -246,7 +256,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
     private fun buildPanels(): List<GuiPanel> = listOf(
         GuiPanel(
             "Dungeons",
-            listOf(contributionsFeature(), aimAssistFeature(), dungeonMapFeature(), funnyMapFeature(), glassDoorsFeature(), starMobEspFeature(), fairyDoorEspFeature(), m5AutoUltFeature(), m5ShittersFeature(), leapFixFeature(), croesusFeature()),
+            listOf(contributionsFeature(), aimAssistFeature(), dungeonMapFeature(), funnyMapFeature(), glassDoorsFeature(), starMobEspFeature(), fairyDoorEspFeature(), m5AutoUltFeature(), keyPickupFeature(), m5ShittersFeature(), leapFixFeature(), croesusFeature()),
         ),
         GuiPanel(
             "Quality of Life",
@@ -500,6 +510,79 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
         ModConfig::isM5AutoUltEnabled,
         ModConfig::setM5AutoUltEnabled,
         emptyList(),
+    )
+
+    private fun keyPickupFeature() = GuiFeature(
+        "Key Pickup",
+        "When a wither or blood key is picked up, shows it on screen and plays a sound. Each can be turned off in here.",
+        ModConfig::isKeyPickupEnabled,
+        ModConfig::setKeyPickupEnabled,
+        listOf(
+            ToggleSetting(
+                "Pickup Notification",
+                "Shows \"Wither Key Picked Up\" or \"Blood Key Picked Up\" on screen.",
+                ModConfig::isKeyNotificationEnabled,
+                ModConfig::setKeyNotificationEnabled,
+            ),
+            ActionSetting("Move Notification", "Drag the notification to move it. Hold it and scroll to resize.") { open(KeyPickupMoveScreen(this)) },
+            SliderSetting(
+                "Size",
+                "How big the notification is.",
+                MIN_KEY_NOTIFICATION_SIZE,
+                MAX_KEY_NOTIFICATION_SIZE,
+                "%",
+                ModConfig::getKeyNotificationSize,
+                ModConfig::setKeyNotificationSize,
+            ),
+            SliderSetting(
+                "Duration",
+                "How long the notification stays on screen.",
+                MIN_KEY_NOTIFICATION_SECONDS,
+                MAX_KEY_NOTIFICATION_SECONDS,
+                "s",
+                ModConfig::getKeyNotificationSeconds,
+                ModConfig::setKeyNotificationSeconds,
+            ),
+            ColorSetting(
+                "Wither Key Color",
+                "The color of \"Wither Key Picked Up\".",
+                DEFAULT_WITHER_KEY_COLOR,
+                ModConfig::getWitherKeyColor,
+                ModConfig::setWitherKeyColor,
+            ),
+            ColorSetting(
+                "Blood Key Color",
+                "The color of \"Blood Key Picked Up\".",
+                DEFAULT_BLOOD_KEY_COLOR,
+                ModConfig::getBloodKeyColor,
+                ModConfig::setBloodKeyColor,
+            ),
+            ToggleSetting(
+                "Pickup Sound",
+                "Plays a sound when a key is picked up.",
+                ModConfig::isKeySoundEnabled,
+                ModConfig::setKeySoundEnabled,
+            ),
+            SoundSetting(
+                "Sound",
+                "Which Minecraft sound to play. Click one in the list to choose it and hear it; scroll the list or search it.",
+                { KeyPickup.allSounds },
+                ModConfig::getKeySound,
+                ModConfig::setKeySound,
+                KeyPickup::playSound,
+            ),
+            SliderSetting("Volume", "How loud the sound is.", 0, MAX_SOUND_VOLUME, "%", ModConfig::getKeySoundVolume, ModConfig::setKeySoundVolume),
+            SliderSetting(
+                "Pitch",
+                "How high the sound is. 100% is its normal pitch.",
+                MIN_SOUND_PITCH,
+                MAX_SOUND_PITCH,
+                "%",
+                ModConfig::getKeySoundPitch,
+                ModConfig::setKeySoundPitch,
+            ),
+            ActionSetting("Play Sound", "Plays the sound as it's set up now.") { KeyPickup.playSound() },
+        ),
     )
 
     private fun m5ShittersFeature() = GuiFeature(

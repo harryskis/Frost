@@ -165,6 +165,22 @@ data class ModConfigData(
     var m5ShittersEnabled: Boolean = false,
     var m5ShittersUrl: String? = DEFAULT_M5_SHITTERS_URL,
     var m5ShittersLocal: MutableMap<String, String> = mutableMapOf(),
+    // Key Pickup - see com.frost.dungeon.KeyPickup. Its notification is centered on a point given
+    // as a fraction of the screen's width and height, so it stays put across window sizes, at a
+    // size in percent of normal text. The sound is a Minecraft sound event's ID, with its
+    // volume and pitch in percent.
+    var keyPickupEnabled: Boolean = false,
+    var keyNotificationEnabled: Boolean = true,
+    var keyNotificationX: Float = DEFAULT_KEY_NOTIFICATION_X,
+    var keyNotificationY: Float = DEFAULT_KEY_NOTIFICATION_Y,
+    var keyNotificationSize: Int = DEFAULT_KEY_NOTIFICATION_SIZE,
+    var keyNotificationSeconds: Int = DEFAULT_KEY_NOTIFICATION_SECONDS,
+    var witherKeyColor: Int = DEFAULT_WITHER_KEY_COLOR,
+    var bloodKeyColor: Int = DEFAULT_BLOOD_KEY_COLOR,
+    var keySoundEnabled: Boolean = true,
+    var keySound: String = DEFAULT_KEY_SOUND,
+    var keySoundVolume: Int = DEFAULT_SOUND_PERCENT,
+    var keySoundPitch: Int = DEFAULT_SOUND_PERCENT,
     // Where each click GUI column has been dragged to, by column name. A column not listed here
     // hasn't been moved, and goes to its default spot.
     var clickGuiPanels: MutableMap<String, ClickGuiPanelState> = mutableMapOf(),
@@ -181,6 +197,21 @@ const val OPAQUE_ALPHA = 0xFF
 const val DEFAULT_FILL_COMPLETED_COLOR = 0xFF2E96DC.toInt()
 const val DEFAULT_MAP_BACKGROUND_COLOR = 0xB0080B10.toInt()
 const val DEFAULT_AIM_ASSIST_STRENGTH = 50
+const val DEFAULT_KEY_NOTIFICATION_X = 0.5f
+const val DEFAULT_KEY_NOTIFICATION_Y = 0.3f
+const val DEFAULT_KEY_NOTIFICATION_SIZE = 250
+const val MIN_KEY_NOTIFICATION_SIZE = 50
+const val MAX_KEY_NOTIFICATION_SIZE = 500
+const val DEFAULT_KEY_NOTIFICATION_SECONDS = 2
+const val MIN_KEY_NOTIFICATION_SECONDS = 1
+const val MAX_KEY_NOTIFICATION_SECONDS = 10
+const val DEFAULT_WITHER_KEY_COLOR = 0xFFC8C8C8.toInt()
+const val DEFAULT_BLOOD_KEY_COLOR = 0xFFFF5555.toInt()
+const val DEFAULT_KEY_SOUND = "minecraft:block.note_block.pling"
+const val DEFAULT_SOUND_PERCENT = 100
+const val MAX_SOUND_VOLUME = 100
+const val MIN_SOUND_PITCH = 50
+const val MAX_SOUND_PITCH = 200
 const val DEFAULT_M5_SHITTERS_URL = "https://jsonhosting.com/api/json/e7619cc9/raw"
 const val MIN_AIM_ASSIST_STRENGTH = 1
 const val MAX_AIM_ASSIST_STRENGTH = 100
@@ -469,6 +500,54 @@ object ModConfig {
     fun setFairyDoorEspEnabled(enabled: Boolean) {
         val config = get()
         config.fairyDoorEspEnabled = enabled
+        save(config)
+    }
+
+    fun isKeyPickupEnabled(): Boolean = get().keyPickupEnabled
+    fun setKeyPickupEnabled(enabled: Boolean) = update { it.keyPickupEnabled = enabled }
+
+    fun isKeyNotificationEnabled(): Boolean = get().keyNotificationEnabled
+    fun setKeyNotificationEnabled(enabled: Boolean) = update { it.keyNotificationEnabled = enabled }
+
+    fun getKeyNotificationX(): Float = get().keyNotificationX.coerceIn(0f, 1f)
+    fun getKeyNotificationY(): Float = get().keyNotificationY.coerceIn(0f, 1f)
+    fun setKeyNotificationPosition(x: Float, y: Float) = update {
+        it.keyNotificationX = x.coerceIn(0f, 1f)
+        it.keyNotificationY = y.coerceIn(0f, 1f)
+    }
+
+    fun getKeyNotificationSize(): Int = get().keyNotificationSize.coerceIn(MIN_KEY_NOTIFICATION_SIZE, MAX_KEY_NOTIFICATION_SIZE)
+    fun setKeyNotificationSize(size: Int) = update { it.keyNotificationSize = size.coerceIn(MIN_KEY_NOTIFICATION_SIZE, MAX_KEY_NOTIFICATION_SIZE) }
+
+    fun getKeyNotificationSeconds(): Int = get().keyNotificationSeconds.coerceIn(MIN_KEY_NOTIFICATION_SECONDS, MAX_KEY_NOTIFICATION_SECONDS)
+    fun setKeyNotificationSeconds(seconds: Int) = update { it.keyNotificationSeconds = seconds }
+
+    // Like the other color pickers, these only change memory; the picker saves on release.
+    fun getWitherKeyColor(): Int = get().witherKeyColor
+    fun setWitherKeyColor(argb: Int) {
+        get().witherKeyColor = argb
+    }
+
+    fun getBloodKeyColor(): Int = get().bloodKeyColor
+    fun setBloodKeyColor(argb: Int) {
+        get().bloodKeyColor = argb
+    }
+
+    fun isKeySoundEnabled(): Boolean = get().keySoundEnabled
+    fun setKeySoundEnabled(enabled: Boolean) = update { it.keySoundEnabled = enabled }
+
+    fun getKeySound(): String = get().keySound.ifBlank { DEFAULT_KEY_SOUND }
+    fun setKeySound(id: String) = update { it.keySound = id }
+
+    fun getKeySoundVolume(): Int = get().keySoundVolume.coerceIn(0, MAX_SOUND_VOLUME)
+    fun setKeySoundVolume(volume: Int) = update { it.keySoundVolume = volume }
+
+    fun getKeySoundPitch(): Int = get().keySoundPitch.coerceIn(MIN_SOUND_PITCH, MAX_SOUND_PITCH)
+    fun setKeySoundPitch(pitch: Int) = update { it.keySoundPitch = pitch }
+
+    private inline fun update(change: (ModConfigData) -> Unit) {
+        val config = get()
+        change(config)
         save(config)
     }
 

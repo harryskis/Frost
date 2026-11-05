@@ -47,4 +47,23 @@ object ChatParser {
     fun parsePuzzleSolvedSolver(rawText: String): String? = PUZZLE_SOLVED_CHAT.find(rawText.trim())?.groupValues?.get(1)
     fun parseQuizBuffFinder(rawText: String): String? = QUIZ_BUFF_FOUND.find(rawText.trim())?.groupValues?.get(1)
     fun parseLeapTarget(rawText: String): String? = LEAP_TELEPORT.find(rawText.trim())?.groupValues?.get(1)
+
+    // A door key being picked up comes as "[MVP+] Name has obtained Wither Key!", or "A Wither
+    // Key was picked up!" - the same patterns Odin and dtMap go by. Anchored at the start, so
+    // a player typing either can't set it off, as their own name would come first.
+    private val KEY_OBTAINED = Regex("^(?:\\[[^]]*?] ?)?\\w{1,16} has obtained (Wither|Blood) Key!$")
+    private val KEY_PICKED_UP = Regex("^A (Wither|Blood) Key was picked up!$")
+
+    /** Which key a chat line says was picked up, or null if it isn't one. */
+    fun parseKeyPickup(rawText: String): DungeonKey? {
+        val text = rawText.trim()
+        val type = (KEY_OBTAINED.find(text) ?: KEY_PICKED_UP.find(text))?.groupValues?.get(1) ?: return null
+        return if (type == "Blood") DungeonKey.BLOOD else DungeonKey.WITHER
+    }
+}
+
+/** The two keys that open a dungeon's doors. */
+enum class DungeonKey(val label: String) {
+    WITHER("Wither Key"),
+    BLOOD("Blood Key"),
 }

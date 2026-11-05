@@ -8,6 +8,22 @@ import kotlin.test.assertTrue
 
 class ChatParserTest {
     @Test
+    fun `key pickups are read from either of Hypixel's messages, with or without a rank`() {
+        assertEquals(DungeonKey.WITHER, ChatParser.parseKeyPickup("[MVP+] Steve has obtained Wither Key!"))
+        assertEquals(DungeonKey.WITHER, ChatParser.parseKeyPickup("Steve has obtained Wither Key!"))
+        assertEquals(DungeonKey.BLOOD, ChatParser.parseKeyPickup("[VIP] alex_2 has obtained Blood Key!"))
+        assertEquals(DungeonKey.WITHER, ChatParser.parseKeyPickup("A Wither Key was picked up!"))
+        assertEquals(DungeonKey.BLOOD, ChatParser.parseKeyPickup("  A Blood Key was picked up!  "))
+    }
+
+    @Test
+    fun `a player typing a key message doesn't count as a pickup`() {
+        assertEquals(null, ChatParser.parseKeyPickup("Party > [MVP+] Steve: A Wither Key was picked up!"))
+        assertEquals(null, ChatParser.parseKeyPickup("[MVP+] Steve: Alex has obtained Blood Key!"))
+        assertEquals(null, ChatParser.parseKeyPickup("Steve has obtained Superboom TNT!"))
+    }
+
+    @Test
     fun `isBloodDoorOpenedMessage matches the announcement, but not someone typing it`() {
         assertTrue(ChatParser.isBloodDoorOpenedMessage("The BLOOD DOOR has been opened!"))
         assertFalse(ChatParser.isBloodDoorOpenedMessage("Someone: The BLOOD DOOR has been opened!"))

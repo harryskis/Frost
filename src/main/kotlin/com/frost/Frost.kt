@@ -12,6 +12,7 @@ import com.frost.dungeon.DungeonGrid
 import com.frost.dungeon.FunnyMap
 import com.frost.dungeon.GlassDoors
 import com.frost.dungeon.GridPos
+import com.frost.dungeon.KeyPickup
 import com.frost.dungeon.LeapFix
 import com.frost.dungeon.M5AutoUlt
 import com.frost.dungeon.RoomCreditTracker
@@ -193,6 +194,7 @@ object Frost : ClientModInitializer {
         M5AutoUlt.register()
         LeapFix.register()
         M5Shitters.register()
+        KeyPickup.register()
         registerCommands()
     }
 
@@ -490,6 +492,7 @@ object Frost : ClientModInitializer {
         if (ChatParser.isRunSummaryMessage(text) && FunnyMap.inCatacombs) Croesus.onRunComplete()
         if (ChatParser.isBloodDoorOpenedMessage(text) && FunnyMap.inCatacombs) FunnyMap.onBloodDoorOpened()
         ChatParser.parseLeapTarget(text)?.let(LeapFix::onLeap)
+        KeyPickup.onChat(text)
         if (ChatParser.isDungeonStartMessage(text)) BloodRushAlert.onRunStarted()
         if (ChatParser.isDungeonStartMessage(text) && ModConfig.isDungeonContributionsEnabled()) {
             startNewSession()

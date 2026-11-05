@@ -89,6 +89,10 @@ class GuiFeature(
         return openAnim.isSettled && expanded && settings.any { it.mouseClicked(event, screen) }
     }
 
+    /** Gives a setting under the mouse, like a list, the scroll before the column gets it. */
+    fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean =
+        openAnim.isSettled && expanded && settings.any { it.mouseScrolled(mouseX, mouseY, scrollY) }
+
     private companion object {
         const val ENABLE_MILLIS = 120f
         const val HOVER_MILLIS = 80f
@@ -199,7 +203,8 @@ class GuiPanel(val name: String, private val features: List<GuiFeature>) {
         save()
     }
 
-    fun mouseScrolled(scrollY: Double) {
+    fun mouseScrolled(mouseX: Double, mouseY: Double, query: String, scrollY: Double) {
+        if (isOverBody(mouseY) && features.filter { it.matches(query) }.any { it.mouseScrolled(mouseX, mouseY, scrollY) }) return
         if (extended) scroll -= (scrollY * ClickGuiLayout.SCROLL_STEP).toInt()
     }
 

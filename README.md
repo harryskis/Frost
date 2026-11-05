@@ -61,6 +61,12 @@ column's header to collapse it, or use the search bar at the bottom.
   way as the player you leaped to.
 - **Fairy Door ESP** (`/frost` -> Dungeons -> Fairy Door ESP) - highlights the wither door out of
   the fairy room through walls, so you can see which way to go before you enter.
+- **Key Pickup** (`/frost` -> Dungeons -> Key Pickup) - when anyone picks up a wither or blood
+  key, **Pickup Notification** shows "Wither Key Picked Up" or "Blood Key Picked Up" on screen,
+  and **Pickup Sound** plays a sound; either can be turned off. Right-click it for **Move
+  Notification** (drag it, hold and scroll to resize), **Size**, **Duration**, and a color for
+  each key; and for the sound, a searchable list of every Minecraft sound (click one to hear
+  it), **Volume**, **Pitch** and **Play Sound** to test it.
 - **M5 Shitters** (`/frost` -> Dungeons -> M5 Shitters) - shows the names of players on the
   M5 Shitters list in red, in chat, in Party Finder and in the tab list. Click a party in Party
   Finder, or a red name in chat (like the "joined the dungeon group" message), to see why

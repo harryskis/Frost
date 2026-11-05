@@ -93,6 +93,9 @@ abstract class GuiSetting(val name: String, val description: String) {
     open fun mouseDragged(mouseX: Double, mouseY: Double) {}
     open fun mouseReleased() {}
 
+    /** Returns true if this row used the scroll, so the column doesn't scroll as well. */
+    open fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean = false
+
     /** Names search should match this row by, including anything nested inside it. */
     open fun searchNames(): List<String> = listOf(name)
 
@@ -683,6 +686,147 @@ class SelectorSetting(
     }
 }
 
+/**
+ * NoammAddons' sound picker: a label with the chosen sound beside it, which clicks open to a
+ * search box and a scrolling list of every sound in the game. Clicking one picks it and plays it
+ * through [preview], so sounds can be tried one after another; clicking the label closes it.
+ */
+class SoundSetting(
+    name: String,
+    description: String,
+    private val sounds: () -> List<String>,
+    private val getter: () -> String,
+    private val setter: (String) -> Unit,
+    private val preview: () -> Unit,
+) : GuiSetting(name, description) {
+    private var open = false
+    private val anim = GuiAnimation(false, OPEN_MILLIS)
+    private var box: EditBox? = null
+    private var query = ""
+    private var filtered: List<String>? = null
+    private var scrollRows = 0
+
+    private val listTop get() = y + ClickGuiLayout.ROW_HEIGHT + SEARCH_HEIGHT + GAP
+    private val listHeight get() = VISIBLE_ROWS * ENTRY_HEIGHT
+    override val height: Int get() = ClickGuiLayout.ROW_HEIGHT + ((SEARCH_HEIGHT + GAP + listHeight + GAP) * anim.value).toInt()
+
+    private fun matching(): List<String> = filtered ?: sounds().filter { SoundSearch.matches(it, query) }.also { filtered = it }
+
+    private fun box(font: Font): EditBox = box ?: EditBox(font, 0, 0, 0, SEARCH_TEXT_HEIGHT, Component.literal(name)).also {
+        it.setBordered(false)
+        it.setMaxLength(SEARCH_MAX_LENGTH)
+        it.setResponder { text ->
+            query = text
+            filtered = null
+            scrollRows = 0
+        }
+        box = it
+    }
+
+    private fun maxScroll() = (matching().size - VISIBLE_ROWS).coerceAtLeast(0)
+
+    private fun isOverList(mouseX: Double, mouseY: Double) =
+        mouseX >= x && mouseX < x + width && mouseY >= listTop && mouseY < listTop + listHeight
+
+    private fun entryAt(mouseX: Double, mouseY: Double): Int? {
+        if (!isOverList(mouseX, mouseY)) return null
+        return (scrollRows + ((mouseY - listTop) / ENTRY_HEIGHT).toInt()).takeIf { it in matching().indices }
+    }
+
+    override fun render(frame: GuiFrame) {
+        anim.update(open, frame.dtMillis)
+        val context = frame.context
+        val font = frame.font
+        drawLabel(frame, rowHeight = ClickGuiLayout.ROW_HEIGHT)
+        val chevronX = x + width - ClickGuiLayout.PADDING - CHEVRON_WIDTH
+        drawChevron(context, chevronX, y + ClickGuiLayout.ROW_HEIGHT / 2 - 1, open, ClickGuiColors.TEXT_DIM)
+        val labelEnd = x + ClickGuiLayout.PADDING + font.width(name) + LABEL_GAP
+        val current = SoundSearch.fitEnd(SoundSearch.displayName(getter()), chevronX - CHEVRON_GAP - labelEnd, font::width)
+        context.text(font, current, chevronX - CHEVRON_GAP - font.width(current), y + (ClickGuiLayout.ROW_HEIGHT - 8) / 2, ClickGuiColors.TEXT_DIM, false)
+
+        if (anim.value <= 0f) return
+        context.enableScissor(x, y + ClickGuiLayout.ROW_HEIGHT, x + width, y + height)
+        val left = x + ClickGuiLayout.PADDING
+        val right = x + width - ClickGuiLayout.PADDING
+        val searchTop = y + ClickGuiLayout.ROW_HEIGHT
+        val box = box(font)
+        context.fill(left, searchTop, right, searchTop + SEARCH_HEIGHT, ClickGuiColors.SURFACE)
+        context.fill(left, searchTop + SEARCH_HEIGHT - 1, right, searchTop + SEARCH_HEIGHT, if (box.isFocused) ClickGuiColors.ACCENT else ClickGuiColors.SURFACE_HOVER)
+        box.x = left + TEXT_INSET
+        box.y = searchTop + (SEARCH_HEIGHT - 8) / 2
+        box.width = right - left - TEXT_INSET * 2
+        box.extractRenderState(context, frame.mouseX, frame.mouseY, 0f)
+        if (query.isEmpty() && !box.isFocused) context.text(font, SEARCH_HINT, box.x, box.y, ClickGuiColors.TEXT_DIM, false)
+
+        val sounds = matching()
+        scrollRows = scrollRows.coerceIn(0, maxScroll())
+        val hovered = if (anim.isSettled) entryAt(frame.mouseX.toDouble(), frame.mouseY.toDouble()) else null
+        context.fill(left, listTop, right, listTop + listHeight, ClickGuiColors.SETTINGS_BACKGROUND)
+        val textRight = right - SCROLLBAR_WIDTH - TEXT_INSET
+        for (row in 0 until VISIBLE_ROWS) {
+            val index = scrollRows + row
+            val sound = sounds.getOrNull(index) ?: break
+            val rowTop = listTop + row * ENTRY_HEIGHT
+            val selected = sound == getter()
+            if (index == hovered) context.fill(left, rowTop, textRight + TEXT_INSET, rowTop + ENTRY_HEIGHT, ClickGuiColors.ROW_HOVER)
+            val text = SoundSearch.fitEnd(SoundSearch.displayName(sound), textRight - left - TEXT_INSET, font::width)
+            val color = if (selected) ClickGuiColors.ACCENT else if (index == hovered) ClickGuiColors.TEXT else ClickGuiColors.TEXT_DIM
+            context.text(font, text, left + TEXT_INSET, rowTop + (ENTRY_HEIGHT - 8) / 2, color, false)
+        }
+        if (sounds.isEmpty()) context.text(font, NO_MATCHES, left + TEXT_INSET, listTop + (ENTRY_HEIGHT - 8) / 2, ClickGuiColors.TEXT_DIM, false)
+        if (maxScroll() > 0) {
+            val barHeight = (listHeight * VISIBLE_ROWS / sounds.size).coerceAtLeast(MIN_BAR_HEIGHT)
+            val barTop = listTop + (listHeight - barHeight) * scrollRows / maxScroll()
+            context.fill(right - SCROLLBAR_WIDTH, barTop, right, barTop + barHeight, ClickGuiColors.ACCENT)
+        }
+        context.disableScissor()
+    }
+
+    override fun mouseClicked(event: MouseButtonEvent, screen: ClickGuiScreen): Boolean {
+        if (!isOver(event.x(), event.y()) || !screen.isLeft(event)) return false
+        if (event.y() < y + ClickGuiLayout.ROW_HEIGHT) {
+            open = !open
+            screen.playClick()
+            return true
+        }
+        if (!open || !anim.isSettled) return false
+        if (event.y() < listTop) {
+            val box = box ?: return false
+            screen.focusTextBox(box)
+            box.mouseClicked(event, false)
+            return true
+        }
+        val index = entryAt(event.x(), event.y()) ?: return false
+        setter(matching()[index])
+        preview()
+        return true
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
+        if (!open || !anim.isSettled || !isOverList(mouseX, mouseY)) return false
+        scrollRows = (scrollRows - scrollY.toInt().coerceIn(-1, 1) * SCROLL_ROWS).coerceIn(0, maxScroll())
+        return true
+    }
+
+    private companion object {
+        const val OPEN_MILLIS = 160f
+        const val SEARCH_HEIGHT = 16
+        const val SEARCH_TEXT_HEIGHT = 10
+        const val SEARCH_MAX_LENGTH = 40
+        const val SEARCH_HINT = "Search sounds..."
+        const val NO_MATCHES = "No sounds match."
+        const val ENTRY_HEIGHT = 12
+        const val VISIBLE_ROWS = 8
+        const val SCROLL_ROWS = 2
+        const val GAP = 2
+        const val TEXT_INSET = 3
+        const val LABEL_GAP = 6
+        const val CHEVRON_GAP = 5
+        const val SCROLLBAR_WIDTH = 2
+        const val MIN_BAR_HEIGHT = 6
+    }
+}
+
 /** A row that opens a group of smaller rows beneath it, nested inside a feature's dropdown. */
 class DropdownSetting(name: String, description: String, private val children: List<GuiSetting>) : GuiSetting(name, description) {
     private var open = false
@@ -717,6 +861,9 @@ class DropdownSetting(name: String, description: String, private val children: L
         }
         return anim.isSettled && open && children.any { it.mouseClicked(event, screen) }
     }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean =
+        anim.isSettled && open && children.any { it.mouseScrolled(mouseX, mouseY, scrollY) }
 
     override fun searchNames(): List<String> = listOf(name) + children.flatMap { it.searchNames() }
 
