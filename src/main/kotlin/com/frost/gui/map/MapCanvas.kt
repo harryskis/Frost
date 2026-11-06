@@ -14,6 +14,13 @@ enum class MapIcon(val fileName: String) {
     fun texturePath(style: MapStyle): String = "textures/map/${style.name.lowercase()}/$fileName.png"
 }
 
+/** Show Princes' crown, Frost's own pixel art, the same in every style. */
+object PrinceCrown {
+    const val TEXTURE = "textures/map/prince_crown.png"
+    const val WIDTH = 13
+    const val HEIGHT = 10
+}
+
 /**
  * What [MapPainter] draws onto, in the map style's own pixels. In game it's the HUD (see
  * [GuiMapCanvas]); the tests draw onto an image instead, which is how the styles get checked
@@ -33,4 +40,7 @@ interface MapCanvas {
 
     /** [style]'s copy of [icon], [size] pixels square with its top-left corner at ([left], [top]). */
     fun icon(icon: MapIcon, style: MapStyle, left: Float, top: Float, size: Float)
+
+    /** The [PrinceCrown], [scale] times its pixel size, with its top-left corner at ([left], [top]). */
+    fun crown(left: Float, top: Float, scale: Float)
 }

@@ -15,6 +15,12 @@ class RecordingMapCanvas : MapCanvas {
         val centerY get() = top + size / 2
     }
 
+    data class Crown(val left: Float, val top: Float, val scale: Float) {
+        val width get() = PrinceCrown.WIDTH * scale
+        val height get() = PrinceCrown.HEIGHT * scale
+    }
+
+    val crowns = mutableListOf<Crown>()
     val fills = mutableListOf<Fill>()
     val texts = mutableListOf<Text>()
     val icons = mutableListOf<Icon>()
@@ -33,6 +39,10 @@ class RecordingMapCanvas : MapCanvas {
 
     override fun icon(icon: MapIcon, style: MapStyle, left: Float, top: Float, size: Float) {
         icons += Icon(icon, style, left, top, size)
+    }
+
+    override fun crown(left: Float, top: Float, scale: Float) {
+        crowns += Crown(left, top, scale)
     }
 
     /** The color last filled at a pixel - what shows there, ignoring transparency. */

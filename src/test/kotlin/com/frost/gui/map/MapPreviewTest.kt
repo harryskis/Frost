@@ -29,7 +29,8 @@ class MapPreviewTest {
 
     private val rows = listOf(
         Row("Legit", PreviewDungeon.legit, MapPaintOptions()),
-        Row("Funny", PreviewDungeon.funny, MapPaintOptions()),
+        Row("Funny", PreviewDungeon.funny, MapPaintOptions(showPrinces = true)),
+        Row("Funny, crowns centered", PreviewDungeon.funny, MapPaintOptions(showPrinces = true, princeIconCenter = true)),
         Row("Legit + extras", PreviewDungeon.legit, MapPaintOptions(bloodRushPath = true, totalSecrets = true)),
     )
 

@@ -52,7 +52,8 @@ Dungeon Map's "LCM" style (`com.frost.gui.map.MapPainter`, `com.frost.dungeon.Ma
 replicates [dtMap](https://github.com/ricedotwho/dtMap) by rice.who - the map from
 LegitCatMod - and bundles its map checkmark icons
 (`src/main/resources/assets/frost/textures/map/lcm/`), used under the BSD 3-Clause License
-below.
+below. Show Princes' list of the rooms a prince can be in (`RoomDatabase.PRINCE_ROOMS`) is
+taken from dtMap's room data under the same license; its crown icon is Frost's own.
 
 ```
 BSD 3-Clause License

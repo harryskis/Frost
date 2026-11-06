@@ -393,6 +393,31 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                     { ModConfig.getNaRoomText().ordinal },
                     { ModConfig.setNaRoomText(NaRoomText.entries[it]) },
                 ),
+                DropdownSetting(
+                    "Show Princes",
+                    "A crown on every room a prince can be in.",
+                    listOf(
+                        ToggleSetting(
+                            "Enabled",
+                            "Shows the crowns. In Legit they come as the rooms are opened; in Funny they're all there at once.",
+                            ModConfig::isShowPrincesEnabled,
+                            ModConfig::setShowPrincesEnabled,
+                        ),
+                        ToggleSetting(
+                            "Hide on Kill",
+                            "Hides every crown once a prince is killed - from Hypixel's \"A Prince falls\" or a party's \"Prince Killed!\" message, which most dungeon mods send.",
+                            ModConfig::isHidePrincesOnKillEnabled,
+                            ModConfig::setHidePrincesOnKillEnabled,
+                        ),
+                        ChoiceSetting(
+                            "Icon Location",
+                            "Top Left puts the crown in the room's corner. Center puts it under the room's name.",
+                            listOf("Top Left", "Center"),
+                            { if (ModConfig.isPrinceIconCenter()) 1 else 0 },
+                            { ModConfig.setPrinceIconCenter(it == 1) },
+                        ),
+                    ),
+                ),
                 ToggleSetting(
                     "Blood Rush Path",
                     "A line following the wither doors toward blood. Green reaches the blood door. Yellow goes as far as what's loaded so far.",

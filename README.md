@@ -36,7 +36,12 @@ column's header to collapse it, or use the search bar at the bottom.
   resize), **Map Style** to draw it as Frost's own map or like NoammAddons' (**NA**), Odin's
   or LegitCatMod's (**LCM**), each with that mod's colors, borders, doors, checkmarks and
   heads, in Legit and Funny alike, **NA Room Text** for what the NA style writes on rooms
-  (checkmarks, secrets, names, or names and secrets, as NoammAddons' own setting), **Blood Rush Path** for a line showing the way to the blood door until it's opened,
+  (checkmarks, secrets, names, or names and secrets, as NoammAddons' own setting), **Show
+  Princes** for a crown on each room a prince can be in (Big Red Flag, Chambers, Doors, Flags,
+  Grass Ruin, Leaves, Market, Pirate, Quartz Knight, Red Blue, Skull, Sloth, Supertall,
+  Waterfall and Withermancer), in the room's **Top Left** corner or **Center**ed under its
+  name, with **Hide on Kill** to clear them all once a prince dies - from Hypixel's "A Prince
+  falls" line or a party's "Prince Killed!" message, **Blood Rush Path** for a line showing the way to the blood door until it's opened,
   **Total Secrets** for a line under the map with the team's secrets out of the dungeon's total,
   worked out from the tab list, **Limit Room Names** to shrink long names to fit their rooms, **Special Room Names** to hide the
   names of blood, fairy, entrance, miniboss or trap rooms, **Fill Completed Rooms** to fill rooms

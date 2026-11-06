@@ -19,6 +19,20 @@ object RoomDatabase {
         val secrets: Int = 0,
     )
 
+    /** The rooms a prince can spawn in, by name - from dtMap's room data (BSD 3-Clause, see
+     * /THIRD_PARTY_NOTICES.md at the repo root), the only list of them among the mods Frost
+     * follows. */
+    val PRINCE_ROOMS = setOf(
+        "Big Red Flag", "Leaves", "Sloth",
+        "Doors", "Grass Ruin", "Skull",
+        "Red Blue",
+        "Quartz Knight", "Waterfall",
+        "Flags", "Supertall",
+        "Chambers", "Market", "Pirate", "Withermancer",
+    )
+
+    fun hasPrince(room: RoomInfo): Boolean = room.name in PRINCE_ROOMS
+
     /** The 6 room-shape categories the bundled database actually uses - the room-weights
      * config screen groups by these. */
     val SHAPES = listOf("1x1", "1x2", "1x3", "1x4", "2x2", "L")

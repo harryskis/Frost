@@ -71,6 +71,7 @@ object FunnyMap {
     private var secretsPercent = 0.0
     private var bloodRush: BloodRushPath? = null
     private var bloodDoorOpened = false
+    private var princeKilled = false
     private val loadedGaps = mutableSetOf<MapGap>()
     private val joinedGaps = mutableSetOf<MapGap>()
 
@@ -150,6 +151,11 @@ object FunnyMap {
 
     /** Fed by Frost's own chat listener. Chat rather than the map, since it says so the moment it
      * happens, and the blood rush line has no more use from then on. */
+    /** Fed by Frost's own chat listener when a prince dies - see [com.frost.parsing.PrinceKill]. */
+    fun onPrinceKilled() {
+        princeKilled = true
+    }
+
     fun onBloodDoorOpened() {
         bloodDoorOpened = true
     }
@@ -212,6 +218,7 @@ object FunnyMap {
             secretsPercent = 0.0
             bloodRush = null
             bloodDoorOpened = false
+            princeKilled = false
             fairyExitDoors = emptyList()
             loadedGaps.clear()
             joinedGaps.clear()
@@ -352,6 +359,7 @@ object FunnyMap {
             bloodRush.takeUnless { bloodDoorOpened },
             teamSecrets,
             FunnyMapLayout.totalSecrets(teamSecrets, secretsPercent),
+            princeKilled,
         )
         return if (ModConfig.isFunnyModeEnabled()) full else FunnyMapLayout.legitView(full)
     }

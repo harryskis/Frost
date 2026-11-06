@@ -101,6 +101,14 @@ class ImageMapCanvas(private val graphics: Graphics2D, private val pixel: Int) :
         graphics.drawImage(image, transform, null)
     }
 
+    override fun crown(left: Float, top: Float, scale: Float) {
+        val image = loadImage("/assets/frost/${PrinceCrown.TEXTURE}")
+        val transform = AffineTransform()
+        transform.translate((left * pixel).toDouble(), (top * pixel).toDouble())
+        transform.scale((scale * pixel).toDouble(), (scale * pixel).toDouble())
+        graphics.drawImage(image, transform, null)
+    }
+
     private companion object {
         const val SHADOW_BRIGHTNESS = 0.25f
     }

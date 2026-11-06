@@ -230,6 +230,51 @@ class MapPainterTest {
         assertEquals(rgb(255, 255, 255), paint(MapStyle.LCM, PreviewDungeon.funny).textsSaying("Waterfall").single().color)
     }
 
+    private val princes = MapPaintOptions(showPrinces = true)
+
+    @Test
+    fun `crowns are off unless turned on, and go on every prince room on the map`() {
+        assertTrue(paint(MapStyle.ODIN, PreviewDungeon.funny).crowns.isEmpty())
+        for (style in MapStyle.entries) {
+            // Waterfall and Big Red Flag have princes; Funny knows every room.
+            assertEquals(2, paint(style, PreviewDungeon.funny, princes).crowns.size, "$style")
+            // Neither has been opened, so Legit doesn't show them yet.
+            assertTrue(paint(style, PreviewDungeon.legit, princes).crowns.isEmpty(), "$style")
+        }
+    }
+
+    @Test
+    fun `a crown goes in its room's top-left corner, smaller on the 16-pixel styles`() {
+        for (style in MapStyle.entries) {
+            val geometry = style.geometry
+            val crowns = paint(style, PreviewDungeon.funny, princes).crowns
+            // Waterfall's top-left tile is (0, 0); Big Red Flag is (4, 3).
+            val corners = listOf(0 to 0, 4 to 3).map { (x, z) -> geometry.cellStart(x) - 1f to geometry.cellStart(z) - 1f }
+            assertEquals(corners.toSet(), crowns.map { it.left to it.top }.toSet(), "$style")
+            assertEquals(if (style == MapStyle.FROST) 1f else 0.7f, crowns.first().scale, "$style")
+        }
+    }
+
+    @Test
+    fun `a centered crown goes just under its room's name`() {
+        val centered = princes.copy(princeIconCenter = true)
+        for (style in listOf(MapStyle.FROST, MapStyle.ODIN, MapStyle.LCM, MapStyle.NA)) {
+            val canvas = paint(style, PreviewDungeon.funny, centered)
+            val flagText = canvas.texts.filter { it.text == "Flag" || it.text == "0/2" || it.text == "?/2" }
+            val textBottom = flagText.maxOf { it.top + 9 * it.scale }
+            val crown = canvas.crowns.single { it.top > style.geometry.cellStart(3) - 2 }
+            assertEquals(textBottom + 1f, crown.top, 0.01f, "$style")
+            assertEquals(style.geometry.tileUnitsToMap(4.5).toFloat(), crown.left + crown.width / 2, 0.01f, "$style")
+        }
+    }
+
+    @Test
+    fun `hide on kill takes every crown away once a prince dies, unless it's off`() {
+        val killed = PreviewDungeon.funny.copy(princeKilled = true)
+        assertTrue(paint(MapStyle.FROST, killed, princes).crowns.isEmpty())
+        assertEquals(2, paint(MapStyle.FROST, killed, princes.copy(hidePrincesOnKill = false)).crowns.size)
+    }
+
     @Test
     fun `Frost fills finished rooms and keeps its own text`() {
         val options = MapPaintOptions()

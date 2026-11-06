@@ -17,6 +17,23 @@ class ChatParserTest {
     }
 
     @Test
+    fun `a prince kill is Hypixel's own line, or a party's mod message on its own`() {
+        assertTrue(PrinceKill.isKill("A Prince falls. +1 Bonus Score"))
+        assertTrue(PrinceKill.isKill("Party > [MVP+] Steve: Prince Killed!"))
+        assertTrue(PrinceKill.isKill("Party > Steve: prince dead"))
+        assertTrue(PrinceKill.isKill("Party > [VIP] [Frost] alex_2: Prince Slain"))
+        assertTrue(PrinceKill.isKill("Party > Steve: \$skytils-dungeon-score-prince\$"))
+    }
+
+    @Test
+    fun `chat that only mentions a prince isn't a kill`() {
+        assertFalse(PrinceKill.isKill("Party > Steve: is the prince killed yet?"))
+        assertFalse(PrinceKill.isKill("[MVP+] Steve: Prince Killed!"))
+        assertFalse(PrinceKill.isKill("Steve: A Prince falls. +1 Bonus Score"))
+        assertFalse(PrinceKill.isKill("Mimic Killed!"))
+    }
+
+    @Test
     fun `a player typing a key message doesn't count as a pickup`() {
         assertEquals(null, ChatParser.parseKeyPickup("Party > [MVP+] Steve: A Wither Key was picked up!"))
         assertEquals(null, ChatParser.parseKeyPickup("[MVP+] Steve: Alex has obtained Blood Key!"))

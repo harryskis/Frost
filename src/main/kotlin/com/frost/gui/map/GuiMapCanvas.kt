@@ -34,7 +34,16 @@ class GuiMapCanvas(private val context: GuiGraphicsExtractor, private val font: 
         context.pose().popMatrix()
     }
 
+    override fun crown(left: Float, top: Float, scale: Float) {
+        context.pose().pushMatrix()
+        context.pose().translate(left, top)
+        context.pose().scale(scale, scale)
+        context.blit(RenderPipelines.GUI_TEXTURED, CROWN, 0, 0, 0f, 0f, PrinceCrown.WIDTH, PrinceCrown.HEIGHT, PrinceCrown.WIDTH, PrinceCrown.HEIGHT)
+        context.pose().popMatrix()
+    }
+
     private companion object {
         val TEXTURES = HashMap<Pair<MapStyle, MapIcon>, Identifier>()
+        val CROWN: Identifier = Identifier.fromNamespaceAndPath(Frost.MOD_ID, PrinceCrown.TEXTURE)
     }
 }

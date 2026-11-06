@@ -109,6 +109,11 @@ data class ModConfigData(
     // Which look the map is drawn in, by com.frost.dungeon.MapStyle name: Frost's own, or one
     // replicating another mod's map.
     var mapStyle: String = MapStyle.FROST.name,
+    // Show Princes: a crown on rooms a prince can be in, hidden once one dies if hidePrincesOnKill,
+    // in the room's top-left corner or under its name if princeIconCenter.
+    var showPrinces: Boolean = false,
+    var hidePrincesOnKill: Boolean = true,
+    var princeIconCenter: Boolean = false,
     // What the NA style writes on rooms, by com.frost.gui.map.NaRoomText name.
     var naRoomText: String = NaRoomText.NAME_AND_SECRETS.name,
     // Draws the route from the entrance to the blood door on Funny Map.
@@ -630,6 +635,15 @@ object ModConfig {
         if (removed.isNotEmpty()) save(config)
         return removed.isNotEmpty()
     }
+
+    fun isShowPrincesEnabled(): Boolean = get().showPrinces
+    fun setShowPrincesEnabled(enabled: Boolean) = update { it.showPrinces = enabled }
+
+    fun isHidePrincesOnKillEnabled(): Boolean = get().hidePrincesOnKill
+    fun setHidePrincesOnKillEnabled(enabled: Boolean) = update { it.hidePrincesOnKill = enabled }
+
+    fun isPrinceIconCenter(): Boolean = get().princeIconCenter
+    fun setPrinceIconCenter(center: Boolean) = update { it.princeIconCenter = center }
 
     fun getNaRoomText(): NaRoomText = NaRoomText.fromName(get().naRoomText)
     fun setNaRoomText(text: NaRoomText) = update { it.naRoomText = text.name }

@@ -26,6 +26,7 @@ import com.frost.qol.ChatRegex
 import com.frost.gui.OnboardingFlow
 import com.frost.gui.RoomWeightsScreen
 import com.frost.parsing.ChatParser
+import com.frost.parsing.PrinceKill
 import com.frost.parsing.PuzzleStatus
 import com.frost.parsing.ScoreboardParser
 import com.frost.parsing.TabListParser
@@ -494,6 +495,7 @@ object Frost : ClientModInitializer {
         val text = TextUtils.stripFormatting(message.string)
         if (ChatParser.isRunSummaryMessage(text) && FunnyMap.inCatacombs) Croesus.onRunComplete()
         if (ChatParser.isBloodDoorOpenedMessage(text) && FunnyMap.inCatacombs) FunnyMap.onBloodDoorOpened()
+        if (FunnyMap.inCatacombs && PrinceKill.isKill(text)) FunnyMap.onPrinceKilled()
         ChatParser.parseLeapTarget(text)?.let(LeapFix::onLeap)
         KeyPickup.onChat(text)
         if (ChatParser.isDungeonStartMessage(text)) BloodRushAlert.onRunStarted()

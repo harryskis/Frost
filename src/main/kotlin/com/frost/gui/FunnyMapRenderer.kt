@@ -58,6 +58,9 @@ object FunnyMapRenderer {
         fillColor = ModConfig.getFillCompletedColor(),
         backgroundColor = ModConfig.getMapBackgroundColor(),
         naRoomText = ModConfig.getNaRoomText(),
+        showPrinces = ModConfig.isShowPrincesEnabled(),
+        hidePrincesOnKill = ModConfig.isHidePrincesOnKillEnabled(),
+        princeIconCenter = ModConfig.isPrinceIconCenter(),
     )
 
     /** The map's on-screen width at [scale]. */

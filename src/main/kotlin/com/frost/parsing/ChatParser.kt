@@ -62,6 +62,24 @@ object ChatParser {
     }
 }
 
+/** Prince kills: Hypixel's own line, seen by whoever lands the kill, and the party messages the
+ * common mods send for everyone else - matched whole, the way Odin and NoammAddons do, so ordinary
+ * chat that happens to mention a prince doesn't count. */
+object PrinceKill {
+    private const val HYPIXEL_LINE = "A Prince falls. +1 Bonus Score"
+    private val PARTY_MESSAGE = Regex("^Party > (?:\\[[^]]+] )*\\w{1,16}: (.+)$")
+    private val MOD_MESSAGES = setOf(
+        "prince killed", "prince killed!", "prince slain", "prince dead", "prince dead!", "\$skytils-dungeon-score-prince\$",
+    )
+
+    fun isKill(rawText: String): Boolean {
+        val text = rawText.trim()
+        if (text == HYPIXEL_LINE) return true
+        val said = PARTY_MESSAGE.find(text)?.groupValues?.get(1) ?: return false
+        return said.trim().lowercase() in MOD_MESSAGES
+    }
+}
+
 /** The two keys that open a dungeon's doors. */
 enum class DungeonKey(val label: String) {
     WITHER("Wither Key"),

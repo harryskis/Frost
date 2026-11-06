@@ -39,6 +39,7 @@ data class FunnyMapSnapshot(
     val bloodRush: BloodRushPath? = null,
     val teamSecrets: Int = 0,
     val totalSecrets: SecretTotal? = null,
+    val princeKilled: Boolean = false,
 ) {
     fun isCleared(room: RoomDatabase.RoomInfo): Boolean = checkmarks[room]?.isCleared() == true
 
