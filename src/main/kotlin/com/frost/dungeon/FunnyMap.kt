@@ -160,6 +160,9 @@ object FunnyMap {
         bloodDoorOpened = true
     }
 
+    /** Where the in-game map last showed [name], or null if it hasn't. */
+    fun markerOf(name: String): DungeonMapReader.Marker? = teammateMarkers[name]
+
     /** The skin to draw for [name], remembered in case they've since dropped off the player list. */
     fun skinOf(name: String): PlayerSkin = teammateSkins[name] ?: DefaultPlayerSkin.getDefaultSkin()
 

@@ -49,6 +49,13 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+## RSM (rs-mod/rsm)
+
+Leap Fix (`com.frost.dungeon.LeapFix`, and the mixins in `com.frost.mixin` that hook it in) is
+a port of the Leap mode of RSM's Rotate Fix, by rice.who - taking the teammate's direction when
+they're clicked in the leap menu and turning the player as the teleport is applied - used under
+the same BSD 3-Clause License as dtMap's, below.
+
 ## dtMap (ricedotwho/dtMap)
 
 Dungeon Map's "LCM" style (`com.frost.gui.map.MapPainter`, `com.frost.dungeon.MapStyle`)

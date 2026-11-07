@@ -154,6 +154,7 @@ data class ModConfigData(
     var m5AutoUltEnabled: Boolean = false,
     // Faces the way a spirit leap's target is facing - see com.frost.dungeon.LeapFix.
     var leapFixEnabled: Boolean = false,
+    var leapFixTimeout: Int = com.frost.dungeon.LeapFixRules.DEFAULT_TIMEOUT_TICKS,
     // A box through walls around the fairy room's way out - also com.frost.dungeon.DungeonEsp.
     var fairyDoorEspEnabled: Boolean = false,
     // Marks the starred mobs in the player's current room on Funny Map.
@@ -450,6 +451,10 @@ object ModConfig {
         config.m5AutoUltEnabled = enabled
         save(config)
     }
+
+    fun getLeapFixTimeout(): Int =
+        get().leapFixTimeout.coerceIn(com.frost.dungeon.LeapFixRules.MIN_TIMEOUT_TICKS, com.frost.dungeon.LeapFixRules.MAX_TIMEOUT_TICKS)
+    fun setLeapFixTimeout(ticks: Int) = update { it.leapFixTimeout = ticks }
 
     fun isLeapFixEnabled(): Boolean = get().leapFixEnabled
     fun setLeapFixEnabled(enabled: Boolean) {

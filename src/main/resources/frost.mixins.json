@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.frost.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ClientPacketListenerMixin",
+    "LocalPlayerAccessor",
+    "MultiPlayerGameModeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

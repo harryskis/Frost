@@ -63,8 +63,10 @@ column's header to collapse it, or use the search bar at the bottom.
   walls, in a color you choose, as an outline or a filled box.
 - **M5 Auto Ult** (`/frost` -> Dungeons -> M5 Auto Ult) - as Healer or Tank, presses your drop key
   once about 10 seconds after entering the M5 boss, to use your ultimate.
-- **Leap Fix** (`/frost` -> Dungeons -> Leap Fix) - after a spirit leap, turns you to face the same
-  way as the player you leaped to.
+- **Leap Fix** (`/frost` -> Dungeons -> Leap Fix) - after a spirit leap, faces you the way the
+  player you leaped to was facing when you clicked them, turned the instant you arrive - a port
+  of RSM's Rotate Fix. A teammate too far away to be loaded is read from their map marker,
+  looking level. **Timeout** sets how long the leap may take to arrive and still turn you.
 - **Fairy Door ESP** (`/frost` -> Dungeons -> Fairy Door ESP) - highlights the wither door out of
   the fairy room through walls, so you can see which way to go before you enter.
 - **Mimic** (`/frost` -> Dungeons -> Mimic) - tells your party in party chat when you kill the

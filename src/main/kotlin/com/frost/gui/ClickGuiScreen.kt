@@ -21,6 +21,7 @@ import com.frost.dungeon.AimAssist
 import com.frost.dungeon.FunnyMapLayout
 import com.frost.config.ChatRegexRule
 import com.frost.dungeon.KeyPickup
+import com.frost.dungeon.LeapFixRules
 import com.frost.qol.ChatRegex
 import com.frost.parsing.DungeonKey
 import com.frost.util.Sounds
@@ -788,10 +789,20 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
 
     private fun leapFixFeature() = GuiFeature(
         "Leap Fix",
-        "After a spirit leap, turns you to face the same way as the player you leaped to.",
+        "After a spirit leap, faces you the way the player you leaped to was facing when you clicked them - turned as you arrive, like RSM's Rotate Fix.",
         ModConfig::isLeapFixEnabled,
         ModConfig::setLeapFixEnabled,
-        emptyList(),
+        listOf(
+            SliderSetting(
+                "Timeout",
+                "How long after clicking a player the leap may take to arrive and still turn you, in ticks (20 a second).",
+                LeapFixRules.MIN_TIMEOUT_TICKS,
+                LeapFixRules.MAX_TIMEOUT_TICKS,
+                " ticks",
+                ModConfig::getLeapFixTimeout,
+                ModConfig::setLeapFixTimeout,
+            ),
+        ),
     )
 
     private fun glassDoorsFeature() = GuiFeature(

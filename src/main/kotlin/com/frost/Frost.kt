@@ -499,7 +499,6 @@ object Frost : ClientModInitializer {
         if (ChatParser.isBloodDoorOpenedMessage(text) && FunnyMap.inCatacombs) FunnyMap.onBloodDoorOpened()
         Mimic.onChat(text)
         if (FunnyMap.inCatacombs && PrinceKill.isKill(text)) FunnyMap.onPrinceKilled()
-        ChatParser.parseLeapTarget(text)?.let(LeapFix::onLeap)
         KeyPickup.onChat(text)
         if (ChatParser.isDungeonStartMessage(text)) BloodRushAlert.onRunStarted()
         if (ChatParser.isDungeonStartMessage(text) && ModConfig.isDungeonContributionsEnabled()) {
