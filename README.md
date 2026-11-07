@@ -39,7 +39,7 @@ column's header to collapse it, or use the search bar at the bottom.
   (checkmarks, secrets, names, or names and secrets, as NoammAddons' own setting), **Show
   Princes** for a crown on each room a prince can be in (Big Red Flag, Chambers, Doors, Flags,
   Grass Ruin, Leaves, Market, Pirate, Quartz Knight, Red Blue, Skull, Sloth, Supertall,
-  Waterfall and Withermancer), in the room's **Top Left** corner or **Center**ed under its
+  Waterfall and Withermancer), in the room's **Top Left** corner or **Center**ed behind its
   name, with **Hide on Kill** to clear them all once a prince dies - from Hypixel's "A Prince
   falls" line or a party's "Prince Killed!" message, **Blood Rush Path** for a line showing the way to the blood door until it's opened,
   **Total Secrets** for a line under the map with the team's secrets out of the dungeon's total,

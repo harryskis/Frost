@@ -9,7 +9,6 @@ import com.frost.dungeon.MapCheckmark
 import com.frost.dungeon.MapGap
 import com.frost.dungeon.MapStyle
 import com.frost.dungeon.RoomDatabase
-import kotlin.math.max
 
 /** The Dungeon Map settings that change how the map is drawn, read from the config in game. */
 data class MapPaintOptions(
@@ -122,11 +121,7 @@ internal abstract class StylePainter(val style: MapStyle) {
     /** Room names, secret counts and checkmarks. [hints] are the tiles only a door hints at. */
     protected abstract fun drawLabels(canvas: MapCanvas, map: FunnyMapSnapshot, options: MapPaintOptions, hints: Set<GridPos>)
 
-    // Where each room's label ends, by the point it's centered on, for a crown to go under.
-    private val labelBottoms = HashMap<Pair<Float, Float>, Float>()
-
     fun paint(canvas: MapCanvas, map: FunnyMapSnapshot, options: MapPaintOptions) {
-        labelBottoms.clear()
         drawBackground(canvas, options)
         val hints = hintedTiles(map, options)
         drawRooms(canvas, map, options)
@@ -134,13 +129,18 @@ internal abstract class StylePainter(val style: MapStyle) {
         drawDoors(canvas, map)
         // Under the labels, so a name crossing the line stays readable.
         if (options.bloodRushPath) map.bloodRush?.let { drawBloodRushPath(canvas, it) }
+        // A centered crown sits behind the room's name, so it goes down first; one in the corner
+        // goes on top of everything.
+        val crowns = options.showPrinces && !(options.hidePrincesOnKill && map.princeKilled)
+        if (crowns && options.princeIconCenter) drawCrowns(canvas, map, options)
         drawLabels(canvas, map, options, hints.keys)
-        if (options.showPrinces && !(options.hidePrincesOnKill && map.princeKilled)) drawCrowns(canvas, map, options)
+        if (crowns && !options.princeIconCenter) drawCrowns(canvas, map, options)
         if (options.totalSecrets) drawSecretsLine(canvas, map, options)
     }
 
-    /** A crown on every room on the map a prince can be in: in its top-left corner, or under its
-     * label. Legit only has the rooms that have been opened, so their crowns come as they open. */
+    /** A crown on every room on the map a prince can be in: in its top-left corner, or centered
+     * behind its name. Legit only has the rooms that have been opened, so their crowns come as
+     * they open. */
     private fun drawCrowns(canvas: MapCanvas, map: FunnyMapSnapshot, options: MapPaintOptions) {
         val scale = (if (style == MapStyle.FROST) 1f else SMALL_CROWN) * options.textSize
         val width = PrinceCrown.WIDTH * scale
@@ -149,8 +149,7 @@ internal abstract class StylePainter(val style: MapStyle) {
             if (!RoomDatabase.hasPrince(room)) continue
             if (options.princeIconCenter) {
                 val (centerX, centerY) = labelCenter(tiles)
-                val top = labelBottoms[centerX to centerY]?.plus(CROWN_GAP) ?: (centerY - height / 2)
-                canvas.crown(centerX - width / 2, top, scale)
+                canvas.crown(centerX - width / 2, centerY - height / 2, scale)
             } else {
                 // The room's top row, then its leftmost tile there - an L's corner can be empty.
                 val topRow = tiles.minOf { it.z }
@@ -271,18 +270,11 @@ internal abstract class StylePainter(val style: MapStyle) {
             canvas.centeredText(text, centerX, lineY, scale, color)
             lineY += lineHeight
         }
-        noteLabelBottom(centerX, centerY, lineY)
-    }
-
-    private fun noteLabelBottom(centerX: Float, centerY: Float, bottom: Float) {
-        val key = centerX to centerY
-        labelBottoms[key] = max(labelBottoms[key] ?: bottom, bottom)
     }
 
     /** [icon], [size] pixels square, centered on ([centerX], [centerY]). */
     protected fun drawIcon(canvas: MapCanvas, icon: MapIcon, centerX: Float, centerY: Float, size: Float) {
         canvas.icon(icon, style, centerX - size / 2, centerY - size / 2, size)
-        noteLabelBottom(centerX, centerY, centerY + size / 2)
     }
 
     protected fun cellCenter(tile: GridPos): Pair<Float, Float> =
@@ -308,7 +300,6 @@ internal abstract class StylePainter(val style: MapStyle) {
 
         // The crown is drawn at full size on Frost's big rooms and smaller on the others' 16-pixel ones.
         const val SMALL_CROWN = 0.7f
-        const val CROWN_GAP = 1f
         const val CROWN_OVERHANG = 1f
     }
 }

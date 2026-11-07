@@ -21,6 +21,9 @@ class RecordingMapCanvas : MapCanvas {
     }
 
     val crowns = mutableListOf<Crown>()
+
+    /** Text and crowns in the order they were drawn - later ones cover earlier ones. */
+    val drawOrder = mutableListOf<Any>()
     val fills = mutableListOf<Fill>()
     val texts = mutableListOf<Text>()
     val icons = mutableListOf<Icon>()
@@ -34,7 +37,7 @@ class RecordingMapCanvas : MapCanvas {
     }
 
     override fun centeredText(text: String, centerX: Float, top: Float, scale: Float, color: Int) {
-        texts += Text(text, centerX, top, scale, color)
+        texts += Text(text, centerX, top, scale, color).also { drawOrder += it }
     }
 
     override fun icon(icon: MapIcon, style: MapStyle, left: Float, top: Float, size: Float) {
@@ -42,7 +45,7 @@ class RecordingMapCanvas : MapCanvas {
     }
 
     override fun crown(left: Float, top: Float, scale: Float) {
-        crowns += Crown(left, top, scale)
+        crowns += Crown(left, top, scale).also { drawOrder += it }
     }
 
     /** The color last filled at a pixel - what shows there, ignoring transparency. */

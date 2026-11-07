@@ -110,7 +110,7 @@ data class ModConfigData(
     // replicating another mod's map.
     var mapStyle: String = MapStyle.FROST.name,
     // Show Princes: a crown on rooms a prince can be in, hidden once one dies if hidePrincesOnKill,
-    // in the room's top-left corner or under its name if princeIconCenter.
+    // in the room's top-left corner or behind its name if princeIconCenter.
     var showPrinces: Boolean = false,
     var hidePrincesOnKill: Boolean = true,
     var princeIconCenter: Boolean = false,

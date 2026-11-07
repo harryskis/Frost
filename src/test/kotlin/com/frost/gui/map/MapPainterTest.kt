@@ -256,16 +256,22 @@ class MapPainterTest {
     }
 
     @Test
-    fun `a centered crown goes just under its room's name`() {
+    fun `a centered crown sits in the middle of its room, behind its name`() {
         val centered = princes.copy(princeIconCenter = true)
-        for (style in listOf(MapStyle.FROST, MapStyle.ODIN, MapStyle.LCM, MapStyle.NA)) {
+        for (style in MapStyle.entries) {
             val canvas = paint(style, PreviewDungeon.funny, centered)
-            val flagText = canvas.texts.filter { it.text == "Flag" || it.text == "0/2" || it.text == "?/2" }
-            val textBottom = flagText.maxOf { it.top + 9 * it.scale }
-            val crown = canvas.crowns.single { it.top > style.geometry.cellStart(3) - 2 }
-            assertEquals(textBottom + 1f, crown.top, 0.01f, "$style")
-            assertEquals(style.geometry.tileUnitsToMap(4.5).toFloat(), crown.left + crown.width / 2, 0.01f, "$style")
+            // Big Red Flag is the 1x1 at (4, 3).
+            val center = style.geometry.tileUnitsToMap(4.5).toFloat() to style.geometry.tileUnitsToMap(3.5).toFloat()
+            val crown = canvas.crowns.single { it.left < center.first && it.left + it.width > center.first && it.top < center.second && it.top + it.height > center.second }
+            assertEquals(center.first, crown.left + crown.width / 2, 0.01f, "$style")
+            assertEquals(center.second, crown.top + crown.height / 2, 0.01f, "$style")
+            // Drawn before any text, so every name is written over it.
+            val firstText = canvas.drawOrder.indexOfFirst { it is RecordingMapCanvas.Text }
+            assertTrue(canvas.drawOrder.indexOf(crown) < firstText || firstText < 0, "$style")
         }
+        // In the corner, crowns go on top of everything instead.
+        val corner = paint(MapStyle.ODIN, PreviewDungeon.funny, princes)
+        assertTrue(corner.drawOrder.indexOf(corner.crowns.first()) > corner.drawOrder.indexOfLast { it is RecordingMapCanvas.Text })
     }
 
     @Test

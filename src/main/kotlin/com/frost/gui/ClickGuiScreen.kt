@@ -411,7 +411,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                         ),
                         ChoiceSetting(
                             "Icon Location",
-                            "Top Left puts the crown in the room's corner. Center puts it under the room's name.",
+                            "Top Left puts the crown in the room's corner. Center puts it in the middle of the room, behind its name.",
                             listOf("Top Left", "Center"),
                             { if (ModConfig.isPrinceIconCenter()) 1 else 0 },
                             { ModConfig.setPrinceIconCenter(it == 1) },
