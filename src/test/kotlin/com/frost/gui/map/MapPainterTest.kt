@@ -275,6 +275,17 @@ class MapPainterTest {
     }
 
     @Test
+    fun `crown size scales the crowns, and room text size leaves them alone`() {
+        val bigger = paint(MapStyle.ODIN, PreviewDungeon.funny, princes.copy(princeIconSize = 1.5f)).crowns.first()
+        assertEquals(0.7f * 1.5f, bigger.scale, 0.001f)
+        assertEquals(0.7f, paint(MapStyle.ODIN, PreviewDungeon.funny, princes.copy(textSize = 2f)).crowns.first().scale, 0.001f)
+        // Centered, a bigger crown stays centered on its room.
+        val centered = paint(MapStyle.FROST, PreviewDungeon.funny, princes.copy(princeIconCenter = true, princeIconSize = 2f)).crowns
+        val flag = MapStyle.FROST.geometry.tileUnitsToMap(4.5).toFloat()
+        assertTrue(centered.any { kotlin.math.abs(it.left + it.width / 2 - flag) < 0.01f && it.scale == 2f })
+    }
+
+    @Test
     fun `hide on kill takes every crown away once a prince dies, unless it's off`() {
         val killed = PreviewDungeon.funny.copy(princeKilled = true)
         assertTrue(paint(MapStyle.FROST, killed, princes).crowns.isEmpty())

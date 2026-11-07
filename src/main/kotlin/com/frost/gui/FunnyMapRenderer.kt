@@ -61,6 +61,7 @@ object FunnyMapRenderer {
         showPrinces = ModConfig.isShowPrincesEnabled(),
         hidePrincesOnKill = ModConfig.isHidePrincesOnKillEnabled(),
         princeIconCenter = ModConfig.isPrinceIconCenter(),
+        princeIconSize = ModConfig.getPrinceIconSize() / PERCENT,
     )
 
     /** The map's on-screen width at [scale]. */

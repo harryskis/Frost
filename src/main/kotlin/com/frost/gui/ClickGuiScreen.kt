@@ -416,6 +416,15 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                             { if (ModConfig.isPrinceIconCenter()) 1 else 0 },
                             { ModConfig.setPrinceIconCenter(it == 1) },
                         ),
+                        SliderSetting(
+                            "Crown Size",
+                            "How big the crowns are on the map.",
+                            MIN_MAP_ELEMENT_SIZE,
+                            MAX_MAP_ELEMENT_SIZE,
+                            "%",
+                            ModConfig::getPrinceIconSize,
+                            ModConfig::setPrinceIconSize,
+                        ),
                     ),
                 ),
                 ToggleSetting(

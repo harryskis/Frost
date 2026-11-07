@@ -25,6 +25,7 @@ data class MapPaintOptions(
     val showPrinces: Boolean = false,
     val hidePrincesOnKill: Boolean = true,
     val princeIconCenter: Boolean = false,
+    val princeIconSize: Float = 1f,
 ) {
     fun showsName(roomType: String): Boolean = roomType !in hiddenNameTypes
 }
@@ -142,7 +143,7 @@ internal abstract class StylePainter(val style: MapStyle) {
      * behind its name. Legit only has the rooms that have been opened, so their crowns come as
      * they open. */
     private fun drawCrowns(canvas: MapCanvas, map: FunnyMapSnapshot, options: MapPaintOptions) {
-        val scale = (if (style == MapStyle.FROST) 1f else SMALL_CROWN) * options.textSize
+        val scale = (if (style == MapStyle.FROST) 1f else SMALL_CROWN) * options.princeIconSize
         val width = PrinceCrown.WIDTH * scale
         val height = PrinceCrown.HEIGHT * scale
         for ((room, tiles) in FunnyMapLayout.groupRooms(map.rooms)) {

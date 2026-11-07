@@ -114,6 +114,7 @@ data class ModConfigData(
     var showPrinces: Boolean = false,
     var hidePrincesOnKill: Boolean = true,
     var princeIconCenter: Boolean = false,
+    var princeIconSize: Int = DEFAULT_MAP_ELEMENT_SIZE,
     // What the NA style writes on rooms, by com.frost.gui.map.NaRoomText name.
     var naRoomText: String = NaRoomText.NAME_AND_SECRETS.name,
     // Draws the route from the entrance to the blood door on Funny Map.
@@ -641,6 +642,9 @@ object ModConfig {
 
     fun isHidePrincesOnKillEnabled(): Boolean = get().hidePrincesOnKill
     fun setHidePrincesOnKillEnabled(enabled: Boolean) = update { it.hidePrincesOnKill = enabled }
+
+    fun getPrinceIconSize(): Int = get().princeIconSize.coerceIn(MIN_MAP_ELEMENT_SIZE, MAX_MAP_ELEMENT_SIZE)
+    fun setPrinceIconSize(size: Int) = update { it.princeIconSize = size }
 
     fun isPrinceIconCenter(): Boolean = get().princeIconCenter
     fun setPrinceIconCenter(center: Boolean) = update { it.princeIconCenter = center }
