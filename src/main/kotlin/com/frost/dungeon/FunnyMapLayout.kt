@@ -437,13 +437,20 @@ object FunnyMapLayout {
         val costs: Map<GridPos, Int>,
         val cameFrom: Map<GridPos, GridPos>,
         val entranceRoom: Set<GridPos>,
+        val fairyRoom: Set<GridPos>,
     ) {
         fun routeTo(tile: GridPos): List<GridPos> = generateSequence(tile) { cameFrom[it] }.toList().reversed()
 
-        /** The entrance's own door is a normal one, so any door out of there will do. */
-        fun canFollow(gap: MapGap, doors: Map<MapGap, DoorKind>): Boolean {
+        /**
+         * Whether the chain goes through [gap] into [into], if that's known. Wither and blood doors,
+         * always. A normal door, only out of the entrance - its own door is a normal one - or into
+         * the fairy room: there's no wither door into fairy, as the key from the room before it
+         * opens the wither door out of it, so the chain carries on from there.
+         */
+        fun canFollow(gap: MapGap, doors: Map<MapGap, DoorKind>, into: GridPos? = null): Boolean {
             val kind = doors[gap] ?: return false
-            return kind != DoorKind.NORMAL || gap.tile in entranceRoom || gap.other in entranceRoom
+            if (kind != DoorKind.NORMAL || gap.tile in entranceRoom || gap.other in entranceRoom) return true
+            return into != null && into in fairyRoom
         }
     }
 
@@ -454,7 +461,8 @@ object FunnyMapLayout {
         val order = ArrayList<GridPos>()
         val costs = hashMapOf(start to 0)
         val cameFrom = HashMap<GridPos, GridPos>()
-        val walk = WitherWalk(order, costs, cameFrom, roomTiles(start, rooms))
+        val fairy = rooms.entries.firstOrNull { it.value.type == "FAIRY" }?.key
+        val walk = WitherWalk(order, costs, cameFrom, roomTiles(start, rooms), fairy?.let { roomTiles(it, rooms) }.orEmpty())
         val queue = PriorityQueue<Pair<GridPos, Int>>(compareBy { it.second })
         queue.add(start to 0)
         while (queue.isNotEmpty()) {
@@ -466,7 +474,7 @@ object FunnyMapLayout {
                 if (next !in rooms) continue
                 val step = when {
                     isMerged(gap, rooms) -> TILE_COST
-                    walk.canFollow(gap, doors) -> DOOR_COST
+                    walk.canFollow(gap, doors, next) -> DOOR_COST
                     else -> continue
                 }
                 val nextCost = cost + step

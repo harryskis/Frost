@@ -52,6 +52,49 @@ class FunnyMapLayoutTest {
     }
 
     @Test
+    fun `the blood rush goes into the fairy room by its normal door, and on by its wither door`() {
+        // As in game: the key from the room before fairy opens the wither door out of it, so the
+        // door in is a normal one.
+        val entrance = RoomDatabase.RoomInfo("Entrance", "ENTRANCE", "1x1")
+        val fairy = RoomDatabase.RoomInfo("Fairy", "FAIRY", "1x1")
+        val blood = RoomDatabase.RoomInfo("Blood", "BLOOD", "1x1")
+        val cathedral = RoomDatabase.RoomInfo("Cathedral", "NORMAL", "2x2")
+        val rooms = mapOf(
+            GridPos(3, 5) to entrance,
+            GridPos(3, 4) to room("Hall"),
+            GridPos(3, 2) to cathedral, GridPos(4, 2) to cathedral, GridPos(3, 3) to cathedral, GridPos(4, 3) to cathedral,
+            GridPos(3, 1) to fairy,
+            GridPos(4, 1) to room("Side Room"),
+            GridPos(2, 1) to room("Deathmite"),
+            GridPos(2, 2) to room("Crypt"),
+            GridPos(1, 2) to blood,
+        )
+        val intoFairy = MapGap(GridPos(3, 1), horizontal = false)
+        val doors = mapOf(
+            MapGap(GridPos(3, 4), horizontal = false) to DoorKind.NORMAL,
+            MapGap(GridPos(3, 3), horizontal = false) to DoorKind.WITHER,
+            intoFairy to DoorKind.NORMAL,
+            MapGap(GridPos(3, 1), horizontal = true) to DoorKind.NORMAL,
+            MapGap(GridPos(2, 1), horizontal = true) to DoorKind.WITHER,
+            MapGap(GridPos(2, 1), horizontal = false) to DoorKind.WITHER,
+            MapGap(GridPos(1, 2), horizontal = true) to DoorKind.BLOOD,
+        )
+        val path = assertNotNull(FunnyMapLayout.bloodRushPath(rooms, doors))
+        assertTrue(path.reachesBlood)
+        assertEquals(
+            listOf(GridPos(3, 5), GridPos(3, 4), GridPos(3, 3), GridPos(3, 2), GridPos(3, 1), GridPos(2, 1), GridPos(2, 2)),
+            path.tiles,
+        )
+        assertEquals(MapGap(GridPos(1, 2), horizontal = true), path.door)
+        // Entrance, fairy and blood aren't counted: Hall, Cathedral, Deathmite and Crypt are.
+        assertEquals(4, FunnyMapLayout.bloodRushRoomCount(rooms, doors))
+        // Fairy's normal door out to a side room is still no way on.
+        assertTrue(GridPos(4, 1) !in path.tiles)
+        // And Fairy Door ESP still finds the wither door out of fairy.
+        assertEquals(listOf(MapGap(GridPos(2, 1), horizontal = true)), FunnyMapLayout.fairyExitDoors(rooms, doors))
+    }
+
+    @Test
     fun `every adjacent tile pair on the 6x6 grid has exactly one gap`() {
         assertEquals(60, FunnyMapLayout.gaps.size)
         assertEquals(60, FunnyMapLayout.gaps.toSet().size)
