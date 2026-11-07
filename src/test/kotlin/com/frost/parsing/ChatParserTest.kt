@@ -26,6 +26,29 @@ class ChatParserTest {
     }
 
     @Test
+    fun `only Hypixel's own line is this player's prince kill`() {
+        assertTrue(PrinceKill.isOwnKill("A Prince falls. +1 Bonus Score"))
+        assertFalse(PrinceKill.isOwnKill("Party > Steve: Prince Killed!"))
+    }
+
+    @Test
+    fun `a charmed Mimic counts, and so does a party saying it's dead in any mod's words`() {
+        assertTrue(MimicKill.isCharmed("CHARM You charmed a Mimic and captured 2 shards from it."))
+        assertTrue(MimicKill.isCharmed("CHARM You charmed a Mimic and captured its Shard."))
+        assertTrue(MimicKill.isAnnounced("Party > [MVP+] Steve: Mimic Killed!"))
+        assertTrue(MimicKill.isAnnounced("Party > Steve: child destroyed!"))
+        assertTrue(MimicKill.isAnnounced("Party > Steve: \$skytils-dungeon-score-mimic\$"))
+        assertFalse(MimicKill.isAnnounced("Party > Steve: did anyone kill the mimic killed thing"))
+        assertFalse(MimicKill.isAnnounced("[MVP+] Steve: Mimic Killed!"))
+    }
+
+    @Test
+    fun `a bat kill is Hypixel's own line`() {
+        assertTrue(BatKill.isOwnKill("A Bat has been slain. +1 Bonus Score"))
+        assertFalse(BatKill.isOwnKill("Party > Steve: Bat Killed!"))
+    }
+
+    @Test
     fun `chat that only mentions a prince isn't a kill`() {
         assertFalse(PrinceKill.isKill("Party > Steve: is the prince killed yet?"))
         assertFalse(PrinceKill.isKill("[MVP+] Steve: Prince Killed!"))

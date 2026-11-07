@@ -40,7 +40,7 @@ column's header to collapse it, or use the search bar at the bottom.
   Princes** for a crown on each room a prince can be in (Big Red Flag, Chambers, Doors, Flags,
   Grass Ruin, Leaves, Market, Pirate, Quartz Knight, Red Blue, Skull, Sloth, Supertall,
   Waterfall and Withermancer), in the room's **Top Left** corner or **Center**ed behind its
-  name, with **Hide on Kill** to clear them all once a prince dies - from Hypixel's "A Prince
+  name, **Crown Size**, and **Hide on Kill** to clear them all once a prince dies - from Hypixel's "A Prince
   falls" line or a party's "Prince Killed!" message, **Blood Rush Path** for a line showing the way to the blood door until it's opened,
   **Total Secrets** for a line under the map with the team's secrets out of the dungeon's total,
   worked out from the tab list, **Limit Room Names** to shrink long names to fit their rooms, **Special Room Names** to hide the
@@ -67,6 +67,11 @@ column's header to collapse it, or use the search bar at the bottom.
   way as the player you leaped to.
 - **Fairy Door ESP** (`/frost` -> Dungeons -> Fairy Door ESP) - highlights the wither door out of
   the fairy room through walls, so you can see which way to go before you enter.
+- **Mimic** (`/frost` -> Dungeons -> Mimic) - tells your party in party chat when you kill the
+  Mimic ("Mimic Killed!"), a prince ("Prince Killed!") or a bat ("Bat Killed!") - the messages
+  other dungeon mods listen for - each on its own toggle. The Mimic and prince messages are sent
+  once a run, and not if someone in the party already said it. The Mimic is spotted dying in the
+  room clear of floors 6 and 7 (it's the only baby zombie there), or by the charm message.
 - **Key Pickup** (`/frost` -> Dungeons -> Key Pickup) - when anyone picks up a wither or blood
   key, **Pickup Notification** shows "Wither Key Picked Up" or "Blood Key Picked Up" on screen,
   and **Pickup Sound** plays a sound; either can be turned off. Right-click it for **Move

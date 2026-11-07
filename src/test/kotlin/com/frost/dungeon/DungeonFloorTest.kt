@@ -6,6 +6,15 @@ import kotlin.test.assertNull
 
 class DungeonFloorTest {
     @Test
+    fun `the scoreboard's floor reads as a number, whether Normal or Master Mode`() {
+        assertEquals(7, DungeonFloor.scoreboardNumber("VII"))
+        assertEquals(6, DungeonFloor.scoreboardNumber("VI"))
+        assertEquals(6, DungeonFloor.scoreboardNumber("M6"))
+        assertEquals(5, DungeonFloor.scoreboardNumber("F5"))
+        assertEquals(null, DungeonFloor.scoreboardNumber("E"))
+    }
+
+    @Test
     fun `parses a normal floor into the catacombs bucket`() {
         val parsed = DungeonFloor.parse("f7")
         assertEquals(DungeonFloor.Parsed("catacombs", "7", "F7"), parsed)

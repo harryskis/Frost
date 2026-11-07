@@ -72,12 +72,38 @@ object PrinceKill {
         "prince killed", "prince killed!", "prince slain", "prince dead", "prince dead!", "\$skytils-dungeon-score-prince\$",
     )
 
-    fun isKill(rawText: String): Boolean {
-        val text = rawText.trim()
-        if (text == HYPIXEL_LINE) return true
-        val said = PARTY_MESSAGE.find(text)?.groupValues?.get(1) ?: return false
-        return said.trim().lowercase() in MOD_MESSAGES
+    fun isKill(rawText: String): Boolean = isOwnKill(rawText) || partySays(rawText, MOD_MESSAGES)
+
+    /** Hypixel's own line, which only the player who killed the prince sees. */
+    fun isOwnKill(rawText: String): Boolean = rawText.trim() == HYPIXEL_LINE
+
+    /** Whether [rawText] is a party message saying exactly one of [messages], in any case. */
+    fun partySays(rawText: String, messages: Set<String>): Boolean {
+        val said = PARTY_MESSAGE.find(rawText.trim())?.groupValues?.get(1) ?: return false
+        return said.trim().lowercase() in messages
     }
+}
+
+/** Mimic kills. The Mimic has no chat line of its own when it dies, so [com.frost.dungeon.Mimic]
+ * spots its death in the world; this is the charm message for killing it with a charm, and the
+ * party messages other mods send, from NoammAddons' list. */
+object MimicKill {
+    private val CHARM = Regex("^CHARM You charmed a Mimic and captured (?:\\d+ shards from it|its Shard)\\.$", RegexOption.IGNORE_CASE)
+    private val MOD_MESSAGES = setOf(
+        "mimic killed", "mimic killed!", "mimic slain", "mimic dead", "mimic dead!", "\$skytils-dungeon-score-mimic\$",
+        "child destroyed!", "mimic obliterated!", "mimic exorcised!", "mimic destroyed!", "mimic annhilated!",
+        "breefing killed", "breefing dead",
+    )
+
+    fun isCharmed(rawText: String): Boolean = CHARM.matches(rawText.trim())
+
+    /** A party member - or this player, coming back through party chat - has said the Mimic is dead. */
+    fun isAnnounced(rawText: String): Boolean = PrinceKill.partySays(rawText, MOD_MESSAGES)
+}
+
+/** Hypixel's line for killing a bat, which only the player who killed it sees. */
+object BatKill {
+    fun isOwnKill(rawText: String): Boolean = rawText.trim() == "A Bat has been slain. +1 Bonus Score"
 }
 
 /** The two keys that open a dungeon's doors. */

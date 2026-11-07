@@ -15,6 +15,7 @@ import com.frost.dungeon.GridPos
 import com.frost.dungeon.KeyPickup
 import com.frost.dungeon.LeapFix
 import com.frost.dungeon.M5AutoUlt
+import com.frost.dungeon.Mimic
 import com.frost.dungeon.RoomCreditTracker
 import com.frost.dungeon.RoomDatabase
 import com.frost.dungeon.RoomGrid
@@ -197,6 +198,7 @@ object Frost : ClientModInitializer {
         M5AutoUlt.register()
         LeapFix.register()
         M5Shitters.register()
+        Mimic.register()
         TextAlerts.register()
         ChatRegex.register()
         registerCommands()
@@ -495,6 +497,7 @@ object Frost : ClientModInitializer {
         val text = TextUtils.stripFormatting(message.string)
         if (ChatParser.isRunSummaryMessage(text) && FunnyMap.inCatacombs) Croesus.onRunComplete()
         if (ChatParser.isBloodDoorOpenedMessage(text) && FunnyMap.inCatacombs) FunnyMap.onBloodDoorOpened()
+        Mimic.onChat(text)
         if (FunnyMap.inCatacombs && PrinceKill.isKill(text)) FunnyMap.onPrinceKilled()
         ChatParser.parseLeapTarget(text)?.let(LeapFix::onLeap)
         KeyPickup.onChat(text)
@@ -737,6 +740,7 @@ object Frost : ClientModInitializer {
             ScoreboardParser.parseFloor(line)?.let {
                 session.floor = it
                 M5AutoUlt.onFloor(it)
+                Mimic.onFloor(it)
             }
             ScoreboardParser.parseSecretsFoundTeamTotal(line)?.let { session.teamSecretsFound = it }
             // Cleared% hits 100 once all rooms are done, which is well before the boss

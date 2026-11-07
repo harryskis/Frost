@@ -261,7 +261,7 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
     private fun buildPanels(): List<GuiPanel> = listOf(
         GuiPanel(
             "Dungeons",
-            listOf(contributionsFeature(), aimAssistFeature(), dungeonMapFeature(), funnyMapFeature(), glassDoorsFeature(), starMobEspFeature(), fairyDoorEspFeature(), m5AutoUltFeature(), keyPickupFeature(), m5ShittersFeature(), leapFixFeature(), croesusFeature()),
+            listOf(contributionsFeature(), aimAssistFeature(), dungeonMapFeature(), funnyMapFeature(), glassDoorsFeature(), starMobEspFeature(), fairyDoorEspFeature(), m5AutoUltFeature(), mimicFeature(), keyPickupFeature(), m5ShittersFeature(), leapFixFeature(), croesusFeature()),
         ),
         GuiPanel(
             "QoL",
@@ -657,6 +657,28 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
             "$number. $message"
         }
     }
+
+    private fun mimicFeature() = GuiFeature(
+        "Mimic",
+        "Tells your party when you kill the Mimic, a prince or a bat, with the messages other dungeon mods understand. Each is only sent by whoever got the kill.",
+        ModConfig::isMimicEnabled,
+        ModConfig::setMimicEnabled,
+        listOf(
+            ToggleSetting(
+                "Mimic Message",
+                "Sends \"Mimic Killed!\" when you kill the Mimic on floors 6 and 7 - unless someone in your party already has.",
+                ModConfig::isMimicMessageEnabled,
+                ModConfig::setMimicMessageEnabled,
+            ),
+            ToggleSetting(
+                "Prince Message",
+                "Sends \"Prince Killed!\" when you kill a prince - unless someone in your party already has.",
+                ModConfig::isPrinceMessageEnabled,
+                ModConfig::setPrinceMessageEnabled,
+            ),
+            ToggleSetting("Bat Message", "Sends \"Bat Killed!\" each time you kill a bat.", ModConfig::isBatMessageEnabled, ModConfig::setBatMessageEnabled),
+        ),
+    )
 
     private fun keyPickupFeature() = GuiFeature(
         "Key Pickup",

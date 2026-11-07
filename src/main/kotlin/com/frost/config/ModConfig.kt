@@ -190,6 +190,12 @@ data class ModConfigData(
     var keySound: String = DEFAULT_KEY_SOUND,
     var keySoundVolume: Int = DEFAULT_SOUND_PERCENT,
     var keySoundPitch: Int = DEFAULT_SOUND_PERCENT,
+    // Mimic - see com.frost.dungeon.Mimic. Tells the party when this player kills the Mimic, a
+    // prince or a bat, each message on its own toggle.
+    var mimicEnabled: Boolean = false,
+    var mimicMessageEnabled: Boolean = true,
+    var princeMessageEnabled: Boolean = true,
+    var batMessageEnabled: Boolean = true,
     // Chat Regex - see com.frost.qol.ChatRegex. Each rule matches chat lines and shows text on
     // screen and/or plays a sound.
     var chatRegexEnabled: Boolean = false,
@@ -546,6 +552,18 @@ object ModConfig {
         config.fairyDoorEspEnabled = enabled
         save(config)
     }
+
+    fun isMimicEnabled(): Boolean = get().mimicEnabled
+    fun setMimicEnabled(enabled: Boolean) = update { it.mimicEnabled = enabled }
+
+    fun isMimicMessageEnabled(): Boolean = get().mimicMessageEnabled
+    fun setMimicMessageEnabled(enabled: Boolean) = update { it.mimicMessageEnabled = enabled }
+
+    fun isPrinceMessageEnabled(): Boolean = get().princeMessageEnabled
+    fun setPrinceMessageEnabled(enabled: Boolean) = update { it.princeMessageEnabled = enabled }
+
+    fun isBatMessageEnabled(): Boolean = get().batMessageEnabled
+    fun setBatMessageEnabled(enabled: Boolean) = update { it.batMessageEnabled = enabled }
 
     fun isChatRegexEnabled(): Boolean = get().chatRegexEnabled
     fun setChatRegexEnabled(enabled: Boolean) = update { it.chatRegexEnabled = enabled }

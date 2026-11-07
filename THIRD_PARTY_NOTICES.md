@@ -10,6 +10,9 @@ License below. Neither the data nor the algorithm were reverse-engineered indepe
 by this project - they're a direct port, and this notice + the license text is required
 by the terms of that license.
 
+Mimic's way of spotting the Mimic's death - the only baby zombie in a floor 6 or 7 room clear -
+and its prince and bat lines follow Odin's own Mimic module, under the same license.
+
 Dungeon Map's "Odin" style (`com.frost.gui.map.MapPainter`, `com.frost.dungeon.MapStyle`)
 replicates Odin's dungeon map - its colors, sizes, door and label rules - and bundles
 Odin's map checkmark icons (`src/main/resources/assets/frost/textures/map/odin/`), under

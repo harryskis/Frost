@@ -8,6 +8,13 @@ package com.frost.dungeon
  * display label.
  */
 object DungeonFloor {
+    private val ROMAN = mapOf("I" to 1, "II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6, "VII" to 7)
+
+    /** The floor number in the scoreboard's floor, like "M6", "VII" or "F5" - null for the entrance
+     * ("E") or anything else. Normal and Master Mode come out the same. */
+    fun scoreboardNumber(raw: String): Int? =
+        ROMAN[raw] ?: raw.takeIf { it.startsWith("M") || it.startsWith("F") }?.substring(1)?.toIntOrNull()
+
     data class Parsed(val dungeonType: String, val floorIndex: String, val label: String)
 
     fun parse(raw: String): Parsed? {
