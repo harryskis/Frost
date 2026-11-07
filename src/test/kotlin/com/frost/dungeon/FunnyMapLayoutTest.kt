@@ -14,6 +14,44 @@ class FunnyMapLayoutTest {
     private val gapAB = MapGap(a, horizontal = true)
 
     @Test
+    fun `a gap between two different rooms is never floor, however its blocks read`() {
+        val crypt = room("Crypt")
+        val cathedral = RoomDatabase.RoomInfo("Cathedral", "NORMAL", "2x2")
+        // Blocks along the gap made it look joined, even after both sides were identified.
+        assertFalse(FunnyMapLayout.isJoinedGap(crypt, cathedral, wasJoined = true) { true })
+        assertTrue(FunnyMapLayout.isJoinedGap(cathedral, cathedral, wasJoined = false) { false })
+        // Until both sides are known, the blocks are all there is to go by.
+        assertTrue(FunnyMapLayout.isJoinedGap(cathedral, null, wasJoined = false) { true })
+        assertTrue(FunnyMapLayout.isJoinedGap(null, null, wasJoined = true) { false })
+        assertFalse(FunnyMapLayout.isJoinedGap(null, cathedral, wasJoined = false) { false })
+    }
+
+    @Test
+    fun `a blood rush line that stops in a big room stops where it came in, not at the far corner`() {
+        // Entrance, a room above it, then a wither door into a 2x2 with no way on known yet.
+        val entrance = RoomDatabase.RoomInfo("Entrance", "ENTRANCE", "1x1")
+        val hall = room("Hall")
+        val cathedral = RoomDatabase.RoomInfo("Cathedral", "NORMAL", "2x2")
+        val rooms = mapOf(
+            GridPos(3, 5) to entrance,
+            GridPos(3, 4) to hall,
+            GridPos(3, 2) to cathedral, GridPos(4, 2) to cathedral, GridPos(3, 3) to cathedral, GridPos(4, 3) to cathedral,
+        )
+        val doors = mapOf(
+            MapGap(GridPos(3, 4), horizontal = false) to DoorKind.NORMAL,
+            MapGap(GridPos(3, 3), horizontal = false) to DoorKind.WITHER,
+        )
+        val path = assertNotNull(FunnyMapLayout.bloodRushPath(rooms, doors))
+        assertEquals(listOf(GridPos(3, 5), GridPos(3, 4), GridPos(3, 3)), path.tiles)
+        assertFalse(path.reachesBlood)
+        // Once the wither door on its far side is read as one, the line carries on through it.
+        val onward = doors + (MapGap(GridPos(3, 1), horizontal = false) to DoorKind.WITHER)
+        val further = assertNotNull(FunnyMapLayout.bloodRushPath(rooms, onward))
+        assertEquals(GridPos(3, 2), further.tiles.last())
+        assertEquals(MapGap(GridPos(3, 1), horizontal = false), further.door)
+    }
+
+    @Test
     fun `every adjacent tile pair on the 6x6 grid has exactly one gap`() {
         assertEquals(60, FunnyMapLayout.gaps.size)
         assertEquals(60, FunnyMapLayout.gaps.toSet().size)

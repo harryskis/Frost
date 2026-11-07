@@ -199,6 +199,18 @@ object FunnyMapLayout {
      * so a tile's world center lands on its cell's center. */
     fun cellStart(tileIndex: Int): Int = tileIndex * TILE_PITCH + GAP_SIZE / 2
 
+    /**
+     * Whether [gap]'s two sides are one room, so it's floor rather than a door. Once both sides are
+     * identified that's certain: the same room or not. Until then it goes by [wasJoined] or blocks
+     * found [spansRoom] along the gap - which a room built out to its edge can fake, turning a
+     * real door, even a wither door, into floor. That's why identified sides always win: a gap
+     * between two different rooms is read again as the door it is.
+     */
+    fun isJoinedGap(first: RoomDatabase.RoomInfo?, second: RoomDatabase.RoomInfo?, wasJoined: Boolean, spansRoom: () -> Boolean): Boolean {
+        if (first != null && second != null) return first == second
+        return wasJoined || spansRoom()
+    }
+
     /** Two tiles scanned as the same room are one multi-tile room, so their gap is floor
      * rather than a door. A room only exists once per dungeon, so this can't false-match. */
     fun isMerged(gap: MapGap, rooms: Map<GridPos, RoomDatabase.RoomInfo>): Boolean {
@@ -401,7 +413,10 @@ object FunnyMapLayout {
         var furthest = -1
         for (tile in walk.order) {
             val cost = walk.costs.getValue(tile)
-            if (cost >= furthest) {
+            // Furthest by doors gone through: within one room the first tile reached - the one
+            // the line comes in by - is as far as it goes, rather than wandering on to the room's
+            // far corner.
+            if (furthest < 0 || cost / DOOR_COST > furthest / DOOR_COST) {
                 furthest = cost
                 end = tile
                 endDoor = null

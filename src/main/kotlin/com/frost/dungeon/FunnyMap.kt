@@ -264,11 +264,12 @@ object FunnyMap {
             if (WorldRoomScanner.isColumnLoaded(level, x, z)) loadedGaps += gap
             // Part of a room rather than a door, even where a room's middle is air or happens to
             // have door-colored blocks in it.
-            if (gap in joinedGaps || spansRoom(level, gap)) {
+            if (FunnyMapLayout.isJoinedGap(rooms[gap.tile], rooms[gap.other], gap in joinedGaps) { spansRoom(level, gap) }) {
                 joinedGaps += gap
                 doors[gap] = DoorKind.NORMAL
                 continue
             }
+            joinedGaps -= gap
             // A special door is final. A normal one might still be upgraded if it was first
             // read before its blocks arrived, so it's worth re-reading.
             if (doors[gap].let { it != null && it != DoorKind.NORMAL }) continue
