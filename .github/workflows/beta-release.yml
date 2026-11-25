@@ -1,11 +1,14 @@
-# Builds Frost and posts it as a pre-release whenever a beta tag (like v0.4.0-beta.1) is pushed.
-# The release's description comes from .github/release-notes/<tag>.md.
+# Posts a beta of Frost as a GitHub pre-release. Adding release notes for the version in
+# gradle.properties - .github/release-notes/v<mod_version>.md - and pushing them builds Frost,
+# runs its tests, and publishes the jar under the tag v<mod_version>, which GitHub creates.
+# It can also be run by hand from the Actions tab.
 name: Beta release
 
 on:
   push:
-    tags:
-      - "v*-beta*"
+    paths:
+      - ".github/release-notes/**"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,19 +19,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Work out the version
+        id: version
+        run: |
+          version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          if [ -f ".github/release-notes/v$version.md" ]; then echo "notes=yes" >> "$GITHUB_OUTPUT"; fi
+
       - uses: actions/setup-java@v4
+        if: steps.version.outputs.notes == 'yes'
         with:
           distribution: temurin
           java-version: "25"
 
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.version.outputs.notes == 'yes'
 
       - name: Build and test
+        if: steps.version.outputs.notes == 'yes'
         run: bash ./gradlew build --no-daemon
 
       - uses: softprops/action-gh-release@v2
+        if: steps.version.outputs.notes == 'yes'
         with:
-          name: Frost ${{ github.ref_name }} for 26.3
-          body_path: .github/release-notes/${{ github.ref_name }}.md
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Frost ${{ steps.version.outputs.tag }} for 26.3
+          body_path: .github/release-notes/${{ steps.version.outputs.tag }}.md
           prerelease: true
           files: build/libs/frost-*.jar
