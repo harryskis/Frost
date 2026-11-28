@@ -62,6 +62,9 @@ object FunnyMap {
 
     private val rooms = mutableMapOf<GridPos, RoomDatabase.RoomInfo>()
 
+    // Each scanned tile's core hash, which tells which tile of its room it is.
+    private val tileCores = mutableMapOf<GridPos, Int>()
+
     // The scanned rooms plus what their shapes prove about tiles that haven't loaded. Rebuilt on
     // each scan rather than added to rooms, so a real scan of those tiles always has the last word.
     private var layoutRooms: Map<GridPos, RoomDatabase.RoomInfo> = emptyMap()
@@ -214,6 +217,7 @@ object FunnyMap {
             // A new level means a new dungeon (or none) - the old layout no longer applies.
             scannedLevel = level
             rooms.clear()
+            tileCores.clear()
             layoutRooms = emptyMap()
             doors.clear()
             opened.clear()
@@ -262,7 +266,16 @@ object FunnyMap {
     private fun scan(level: ClientLevel) {
         for (tile in FunnyMapLayout.tiles) {
             if (tile in rooms) continue
-            WorldRoomScanner.scanTileIfLoaded(level, tile)?.let { rooms[tile] = it }
+            val core = WorldRoomScanner.scanTileCoreIfLoaded(level, tile) ?: continue
+            val room = RoomDatabase.lookup(core) ?: continue
+            rooms[tile] = room
+            tileCores[tile] = core
+        }
+        // An L room seen whole shows how its tiles sit, for placing its last tile next time
+        // when only two have loaded.
+        for ((room, tiles) in FunnyMapLayout.groupRooms(rooms)) {
+            if (room.shape != "L" || tiles.size != 3) continue
+            LRoomLayouts.learn(tiles.associateWith { tileCores.getValue(it) })?.let { LRoomMemory.remember(room.name, it) }
         }
         for (gap in FunnyMapLayout.gaps) {
             val (x, z) = FunnyMapLayout.gapColumn(gap)
@@ -281,7 +294,8 @@ object FunnyMap {
             scanDoor(level, gap)?.let { doors[gap] = it }
         }
         val unknownGaps = FunnyMapLayout.gaps.toSet() - loadedGaps
-        layoutRooms = FunnyMapLayout.withInferredTiles(rooms, joinedGaps, unknownGaps)
+        val completedLs = LRoomLayouts.complete(rooms, tileCores, LRoomMemory::layoutOf)
+        layoutRooms = FunnyMapLayout.withInferredTiles(completedLs, joinedGaps, unknownGaps)
         bloodRush = FunnyMapLayout.bloodRushPath(layoutRooms, doors, unknownGaps)
         fairyExitDoors = FunnyMapLayout.fairyExitDoors(layoutRooms, doors).filter { isWitherDoorClosed(level, it) }
         if (isBloodRushAlertActive() && !bloodDoorOpened) {

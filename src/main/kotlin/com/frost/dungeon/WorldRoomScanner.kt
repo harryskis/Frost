@@ -99,12 +99,16 @@ object WorldRoomScanner {
      * them wouldn't be scanned in time either. Polling every loaded-but-unidentified tile
      * catches both, at the cost of a cheap column read per unknown tile per tick.
      */
-    fun scanTileIfLoaded(world: ClientLevel, tile: GridPos): RoomDatabase.RoomInfo? {
+    fun scanTileIfLoaded(world: ClientLevel, tile: GridPos): RoomDatabase.RoomInfo? =
+        scanTileCoreIfLoaded(world, tile)?.let(RoomDatabase::lookup)
+
+    /** [tile]'s core hash, or null if its chunk isn't loaded - which tile of a room it is, as
+     * well as which room, since every tile of a room has its own. */
+    fun scanTileCoreIfLoaded(world: ClientLevel, tile: GridPos): Int? {
         val (scanX, scanZ) = tileToScanColumn(tile)
         // load=false keeps this a pure "is it already loaded?" check - the whole point is
         // to skip tiles whose chunks aren't client-side yet, not to force them in.
         val chunk = world.chunkSource.getChunk(scanX shr 4, scanZ shr 4, ChunkStatus.FULL, false) ?: return null
-        val (core, _) = scanCore(chunk, scanX, scanZ)
-        return RoomDatabase.lookup(core)
+        return scanCore(chunk, scanX, scanZ).first
     }
 }
