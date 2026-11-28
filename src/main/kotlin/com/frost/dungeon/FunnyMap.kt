@@ -112,7 +112,7 @@ object FunnyMap {
 
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { client -> onTick(client) }
-        HudElementRegistry.addLast(HUD_ID) { context, _ -> drawHud(context) }
+        HudElementRegistry.addLast(HUD_ID) { context, tracker -> drawHud(context, tracker.getGameTimeDeltaPartialTick(true)) }
     }
 
     /** Fed the visible tab list lines, in the order they're displayed, by Frost's own polling. */
@@ -355,7 +355,7 @@ object FunnyMap {
     private fun columnHasBlocks(chunk: LevelChunk, x: Int, z: Int): Boolean =
         (COLUMN_TOP_Y downTo COLUMN_BOTTOM_Y).any { y -> !chunk.getBlockState(BlockPos(x, y, z)).isAir }
 
-    private fun drawHud(context: GuiGraphicsExtractor) {
+    private fun drawHud(context: GuiGraphicsExtractor, partialTick: Float) {
         if (!ModConfig.isFunnyMapEnabled() || !inCatacombs) return
         val client = Minecraft.getInstance()
         // The move screen draws its own copy at the position being dragged.
@@ -372,7 +372,7 @@ object FunnyMap {
         FunnyMapRenderer.draw(context, client.font, x, y, scale, current)
         if (ModConfig.isFunnyModeEnabled()) FunnyMapRenderer.drawStarMobs(context, x, y, scale, starMobs)
         val party = FunnyMapRenderer.Party(partyNames, teammateMarkers, partyClasses, ModConfig.getMapStyle().namesWhileLeaping && isLeaping(client))
-        FunnyMapRenderer.drawPlayers(context, client.font, x, y, scale, level, player, party)
+        FunnyMapRenderer.drawPlayers(context, client.font, x, y, scale, level, player, party, partialTick)
     }
 
     /** Holding a spirit leap, or in its menu - when Odin and dtMap write names under the heads. */

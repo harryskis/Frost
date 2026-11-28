@@ -354,23 +354,44 @@ class FunnyMapLayoutTest {
             rightOf(tile2) to DoorKind.WITHER,
             rightOf(tile3) to DoorKind.WITHER,
         )
-        assertEquals(3, FunnyMapLayout.possibleBloodRushRoomCount(rooms, doors, emptySet()))
+        // The three so far, and at least one more: the door can't open into blood.
+        assertEquals(4, FunnyMapLayout.possibleBloodRushRoomCount(rooms, doors, emptySet()))
     }
 
     @Test
-    fun `a wither door on means another room, once it can't be the fairy room`() {
+    fun `a wither door on always means another room, even if it opens into fairy`() {
         val doors = mapOf(rightOf(a) to DoorKind.NORMAL, rightOf(b) to DoorKind.WITHER)
         val fairyUnknown = mapOf(a to entrance, b to room("One"))
-        assertEquals(1, FunnyMapLayout.possibleBloodRushRoomCount(fairyUnknown, doors, emptySet()))
+        assertEquals(2, FunnyMapLayout.possibleBloodRushRoomCount(fairyUnknown, doors, emptySet()))
         val fairyKnown = fairyUnknown + (GridPos(5, 5) to typed("Fairy", "FAIRY"))
         assertEquals(2, FunnyMapLayout.possibleBloodRushRoomCount(fairyKnown, doors, emptySet()))
+    }
+
+    @Test
+    fun `there's always at least one room between fairy and blood`() {
+        // Two rooms, then fairy, with the way out of fairy not loaded yet: three at the least.
+        val rooms = mapOf(a to entrance, b to room("Pit"), tile2 to room("Flags"), tile3 to typed("Fairy", "FAIRY"))
+        val doors = mapOf(
+            rightOf(a) to DoorKind.NORMAL,
+            rightOf(b) to DoorKind.WITHER,
+            rightOf(tile2) to DoorKind.NORMAL,
+        )
+        assertEquals(3, FunnyMapLayout.possibleBloodRushRoomCount(rooms, doors, setOf(rightOf(tile3))))
+    }
+
+    @Test
+    fun `once a room past fairy is through, the next door could be blood's`() {
+        val rooms = mapOf(a to entrance, b to typed("Fairy", "FAIRY"), tile2 to room("One"))
+        val doors = mapOf(rightOf(a) to DoorKind.NORMAL, rightOf(b) to DoorKind.WITHER)
+        assertEquals(1, FunnyMapLayout.possibleBloodRushRoomCount(rooms, doors, setOf(rightOf(tile2))))
     }
 
     @Test
     fun `with no door on, it's only possible if the last room still has a gap to load`() {
         val rooms = mapOf(a to entrance, b to room("One"))
         val doors = mapOf(rightOf(a) to DoorKind.NORMAL)
-        assertEquals(1, FunnyMapLayout.possibleBloodRushRoomCount(rooms, doors, setOf(rightOf(b))))
+        // Fairy isn't through yet, so there's still a room past it to come.
+        assertEquals(2, FunnyMapLayout.possibleBloodRushRoomCount(rooms, doors, setOf(rightOf(b))))
         assertNull(FunnyMapLayout.possibleBloodRushRoomCount(rooms, doors, setOf(rightOf(tile3))))
     }
 

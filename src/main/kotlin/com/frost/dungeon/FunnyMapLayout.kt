@@ -529,10 +529,12 @@ object FunnyMapLayout {
 
     /**
      * The fewest rooms the blood rush could still turn out to go through while the chain hasn't
-     * reached blood: at least everything it's been through so far. A door leading on adds one
-     * more, since only a blood door opens into blood - unless that next room could be the fairy
-     * room, which doesn't count. Otherwise it only counts as unfinished if the last room has a
-     * gap in [unknownGaps] that a door could still turn up in. Null if it can't be going on.
+     * reached blood: at least everything it's been through so far, and one more for as long as
+     * it hasn't been through a room past the fairy room - blood is never straight after fairy,
+     * and fairy is always on the way. A door leading on adds one too: only a blood door opens
+     * into blood, and if the room it opens is fairy, the room after that still counts. Without a
+     * door it only counts as unfinished if the last room has a gap in [unknownGaps] that a door
+     * could still turn up in. Null if it can't be going on.
      */
     fun possibleBloodRushRoomCount(
         rooms: Map<GridPos, RoomDatabase.RoomInfo>,
@@ -541,9 +543,12 @@ object FunnyMapLayout {
     ): Int? {
         val route = witherRoute(rooms, doors)?.takeUnless { it.reachesBlood } ?: return null
         val soFar = roomsOn(route, rooms)
-        if (route.door != null) return soFar + if (rooms.values.any { it.type == "FAIRY" }) 1 else 0
+        if (route.door != null) return soFar + 1
         val lastRoom = roomTiles(route.tiles.last(), rooms)
-        return soFar.takeIf { lastRoom.any { tile -> gapsAround(tile).any { it in unknownGaps } } }
+        if (lastRoom.none { tile -> gapsAround(tile).any { it in unknownGaps } }) return null
+        val fairyAt = route.tiles.indexOfFirst { rooms[it]?.type == "FAIRY" }
+        val pastFairy = fairyAt >= 0 && roomsOn(route.copy(tiles = route.tiles.drop(fairyAt + 1)), rooms) > 0
+        return if (pastFairy) soFar else soFar + 1
     }
 
     private fun roomsOn(path: BloodRushPath, rooms: Map<GridPos, RoomDatabase.RoomInfo>): Int =

@@ -19,6 +19,7 @@ import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
+import net.minecraft.util.Mth
 import net.minecraft.world.entity.player.PlayerSkin
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -114,14 +115,21 @@ object FunnyMapRenderer {
     /** Each party member's head, turned to face the way they're looking, in the style's own look.
      * A teammate too far away for the client to have loaded is placed by their marker on the
      * in-game map instead, which is coarser but always there. */
-    fun drawPlayers(context: GuiGraphicsExtractor, font: Font, x: Int, y: Int, scale: Float, level: ClientLevel, self: LocalPlayer, party: Party) {
+    /**
+     * [partialTick] is how far the frame is between the last tick and the next: loaded players
+     * are drawn where they are this frame, between the two, so their heads glide instead of
+     * stepping 20 times a second.
+     */
+    fun drawPlayers(context: GuiGraphicsExtractor, font: Font, x: Int, y: Int, scale: Float, level: ClientLevel, self: LocalPlayer, party: Party, partialTick: Float) {
         val style = style()
         val head = Head(context, font, style.geometry, ModConfig.getFunnyMapHeadSize() / PERCENT)
         inMapSpace(context, x, y, scale) {
             val loaded = level.players().filter { it !== self && it.gameProfile.name in party.names }
             for (entity in loaded) {
                 val name = entity.gameProfile.name
-                head.draw(entity.skin, entity.x, entity.z, entity.yHeadRot, style.headLook(false, party.classes[name]), name.takeIf { party.showNames })
+                val at = entity.getPosition(partialTick)
+                val yaw = Mth.rotLerp(partialTick, entity.yHeadRotO, entity.yHeadRot)
+                head.draw(entity.skin, at.x, at.z, yaw, style.headLook(false, party.classes[name]), name.takeIf { party.showNames })
             }
             val loadedNames = loaded.map { it.gameProfile.name }
             for ((name, marker) in party.markers) {
@@ -133,7 +141,8 @@ object FunnyMapRenderer {
             // names everyone, Odin only teammates.
             val selfName = self.gameProfile.name
             val selfLabel = selfName.takeIf { party.showNames && style == MapStyle.LCM }
-            head.draw(self.skin, self.x, self.z, self.yRot, style.headLook(true, party.classes[selfName]), selfLabel)
+            val selfAt = self.getPosition(partialTick)
+            head.draw(self.skin, selfAt.x, selfAt.z, self.yRot, style.headLook(true, party.classes[selfName]), selfLabel)
         }
     }
 
@@ -145,7 +154,9 @@ object FunnyMapRenderer {
             if (centerX !in onMap || centerZ !in onMap) return
             val pose = context.pose()
             pose.pushMatrix()
-            pose.translate(centerX.toInt().toFloat(), centerZ.toInt().toFloat())
+            // Not rounded to whole map pixels: the map is scaled up on screen, so in between
+            // there are real pixels for the head to move through.
+            pose.translate(centerX.toFloat(), centerZ.toFloat())
             if (name != null) {
                 pose.pushMatrix()
                 pose.scale(MapStyle.LEAP_NAME_SCALE, MapStyle.LEAP_NAME_SCALE)
