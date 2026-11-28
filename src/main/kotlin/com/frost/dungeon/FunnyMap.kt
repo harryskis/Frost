@@ -19,6 +19,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.PlayerSkin
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.chunk.LevelChunk
 import net.minecraft.world.level.chunk.status.ChunkStatus
@@ -48,6 +49,7 @@ object FunnyMap {
     // The column range a room/gap can occupy - matches WorldRoomScanner.scanCore.
     private const val COLUMN_TOP_Y = 140
     private const val COLUMN_BOTTOM_Y = 12
+    private const val ROOF_SEARCH_TOP_Y = 255
 
     // Where a door's blocks sit. Wither doors are coal and blood doors are red terracotta.
     private val DOOR_Y_RANGE = 66..74
@@ -311,15 +313,29 @@ object FunnyMap {
     private fun scanDoor(level: ClientLevel, gap: MapGap): DoorKind? {
         val (x, z) = FunnyMapLayout.gapColumn(gap)
         val chunk = level.chunkSource.getChunk(x shr 4, z shr 4, ChunkStatus.FULL, false) ?: return null
-        if (!columnHasBlocks(chunk, x, z)) return null
+        // Glass Doors may have swapped a door's blocks on the client, which hides what door it is.
+        fun blockAt(y: Int): Block = BlockPos(x, y, z).let { GlassDoors.originalBlock(it) ?: chunk.getBlockState(it).block }
+        var special: DoorKind? = null
         for (y in DOOR_Y_RANGE) {
-            val pos = BlockPos(x, y, z)
-            // Glass Doors may have swapped this block on the client, which hides what door it is.
-            val block = GlassDoors.originalBlock(pos) ?: chunk.getBlockState(pos).block
-            if (block === Blocks.COAL_BLOCK) return DoorKind.WITHER
-            if (block === Blocks.DYED_TERRACOTTA.red()) return DoorKind.BLOOD
+            val block = blockAt(y)
+            if (block === Blocks.COAL_BLOCK) special = DoorKind.WITHER
+            if (block === Blocks.DYED_TERRACOTTA.red()) special = DoorKind.BLOOD
         }
-        return DoorKind.NORMAL
+        val opening = FunnyMapLayout.DOOR_OPENING_Y.map(::blockAt).let { blocks ->
+            when {
+                blocks.all { it.defaultBlockState().isAir } -> FunnyMapLayout.Opening.AIR
+                blocks.any { it === Blocks.INFESTED_CHISELED_STONE_BRICKS } -> FunnyMapLayout.Opening.ENTRANCE_DOOR_BLOCKS
+                else -> FunnyMapLayout.Opening.OTHER
+            }
+        }
+        val touchesEntrance = rooms[gap.tile]?.type == "ENTRANCE" || rooms[gap.other]?.type == "ENTRANCE"
+        return FunnyMapLayout.readDoor(roofHeight(chunk, x, z), special, touchesEntrance, opening)
+    }
+
+    /** The highest block in a column, ignoring gold blocks as NoammAddons does, or null if it's air. */
+    private fun roofHeight(chunk: LevelChunk, x: Int, z: Int): Int? = (ROOF_SEARCH_TOP_Y downTo COLUMN_BOTTOM_Y).firstOrNull { y ->
+        val state = chunk.getBlockState(BlockPos(x, y, z))
+        !state.isAir && state.block !== Blocks.GOLD_BLOCK
     }
 
     private fun columnHasBlocks(chunk: LevelChunk, x: Int, z: Int): Boolean =
@@ -353,7 +369,9 @@ object FunnyMap {
     }
 
     private fun snapshot(): FunnyMapSnapshot {
-        val shownRooms = bloodRush?.bloodTile?.let { layoutRooms + (it to WORKED_OUT_BLOOD) } ?: layoutRooms
+        // The blood room, where it's been worked out or its door seen before the room itself loads.
+        val bloodTile = bloodRush?.bloodTile ?: FunnyMapLayout.bloodBehindDoor(layoutRooms, doors)
+        val shownRooms = bloodTile?.let { layoutRooms + (it to WORKED_OUT_BLOOD) } ?: layoutRooms
         val full = FunnyMapSnapshot(
             shownRooms,
             doors,

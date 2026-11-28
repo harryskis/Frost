@@ -95,6 +95,44 @@ class FunnyMapLayoutTest {
     }
 
     @Test
+    fun `a gap is a door only with a door's frame, so a room built to its edge isn't one`() {
+        val other = FunnyMapLayout.Opening.OTHER
+        assertEquals(DoorKind.NORMAL, FunnyMapLayout.readDoor(74, null, touchesEntrance = false, opening = FunnyMapLayout.Opening.AIR))
+        assertEquals(DoorKind.NORMAL, FunnyMapLayout.readDoor(82, null, touchesEntrance = false, opening = other))
+        // Lava Ravine's edge, say: blocks in the gap, but up to a height no door's frame reaches.
+        assertNull(FunnyMapLayout.readDoor(77, null, touchesEntrance = false, opening = other))
+        assertNull(FunnyMapLayout.readDoor(null, null, touchesEntrance = false, opening = FunnyMapLayout.Opening.AIR))
+        // Wither and blood doors go by their blocks.
+        assertEquals(DoorKind.WITHER, FunnyMapLayout.readDoor(77, DoorKind.WITHER, touchesEntrance = false, opening = other))
+        assertEquals(DoorKind.BLOOD, FunnyMapLayout.readDoor(74, DoorKind.BLOOD, touchesEntrance = false, opening = other))
+    }
+
+    @Test
+    fun `the entrance's door counts while sealed or open, but a wall behind the entrance doesn't`() {
+        val sealed = FunnyMapLayout.Opening.ENTRANCE_DOOR_BLOCKS
+        assertEquals(DoorKind.NORMAL, FunnyMapLayout.readDoor(70, null, touchesEntrance = true, opening = sealed))
+        assertEquals(DoorKind.NORMAL, FunnyMapLayout.readDoor(70, null, touchesEntrance = true, opening = FunnyMapLayout.Opening.AIR))
+        assertNull(FunnyMapLayout.readDoor(70, null, touchesEntrance = true, opening = FunnyMapLayout.Opening.OTHER))
+        // Away from the entrance, those blocks alone don't make a door.
+        assertNull(FunnyMapLayout.readDoor(70, null, touchesEntrance = false, opening = sealed))
+    }
+
+    @Test
+    fun `the blood room is drawn behind its door before the room itself has loaded`() {
+        val blood = RoomDatabase.RoomInfo("Blood", "BLOOD", "1x1")
+        val ravine = RoomDatabase.RoomInfo("Lava Ravine", "NORMAL", "L")
+        val rooms = mapOf(GridPos(4, 1) to ravine, GridPos(5, 1) to ravine, GridPos(5, 2) to ravine)
+        val bloodDoor = MapGap(GridPos(4, 0), horizontal = false)
+        val doors = mapOf(bloodDoor to DoorKind.BLOOD, MapGap(GridPos(3, 1), horizontal = true) to DoorKind.NORMAL)
+        assertEquals(GridPos(4, 0), FunnyMapLayout.bloodBehindDoor(rooms, doors))
+        // Nothing to work out once the blood room is known, or without a blood door seen.
+        assertNull(FunnyMapLayout.bloodBehindDoor(rooms + (GridPos(4, 0) to blood), doors))
+        assertNull(FunnyMapLayout.bloodBehindDoor(rooms, doors - bloodDoor))
+        // A blood door with neither side known says nothing about where blood is.
+        assertNull(FunnyMapLayout.bloodBehindDoor(emptyMap(), doors))
+    }
+
+    @Test
     fun `every adjacent tile pair on the 6x6 grid has exactly one gap`() {
         assertEquals(60, FunnyMapLayout.gaps.size)
         assertEquals(60, FunnyMapLayout.gaps.toSet().size)

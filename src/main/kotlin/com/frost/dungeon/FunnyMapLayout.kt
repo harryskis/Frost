@@ -199,6 +199,38 @@ object FunnyMapLayout {
      * so a tile's world center lands on its cell's center. */
     fun cellStart(tileIndex: Int): Int = tileIndex * TILE_PITCH + GAP_SIZE / 2
 
+    /** What a gap's opening, at a door's height, holds - used to tell the entrance's door. */
+    enum class Opening { AIR, ENTRANCE_DOOR_BLOCKS, OTHER }
+
+    /** The heights a door's frame tops out at. Blocks in a gap reaching any other height are the
+     * edge of a room built out to it, not a door - NoammAddons' rule. */
+    val DOOR_ROOF_HEIGHTS = setOf(73, 74, 81, 82)
+
+    /**
+     * The door in a gap, from what's in its middle column: the highest block in it ([roof], null if
+     * it's all air), a wither or blood door's [special] block, and what its [opening] holds.
+     * Coal and red terracotta always mean their doors. Anything else is a door only with a door's
+     * frame - except next to the entrance, whose door is built differently: there it's one if its
+     * opening is open, or still sealed with the entrance door's blocks, rather than a wall.
+     */
+    fun readDoor(roof: Int?, special: DoorKind?, touchesEntrance: Boolean, opening: Opening): DoorKind? {
+        if (roof == null) return null
+        if (special != null) return special
+        if (roof in DOOR_ROOF_HEIGHTS) return DoorKind.NORMAL
+        if (touchesEntrance && opening != Opening.OTHER) return DoorKind.NORMAL
+        return null
+    }
+
+    /** Where the blood room has to be when its door has been seen but the room itself hasn't
+     * loaded yet: the unknown side of a blood door. Null once the blood room is known. */
+    fun bloodBehindDoor(rooms: Map<GridPos, RoomDatabase.RoomInfo>, doors: Map<MapGap, DoorKind>): GridPos? {
+        if (rooms.values.any { it.type == "BLOOD" }) return null
+        return doors.entries.asSequence().filter { it.value == DoorKind.BLOOD }.mapNotNull { (gap, _) ->
+            val sides = listOf(gap.tile, gap.other)
+            sides.singleOrNull { it !in rooms }?.takeIf { sides.any { side -> side in rooms } }
+        }.firstOrNull()
+    }
+
     /**
      * Whether [gap]'s two sides are one room, so it's floor rather than a door. Once both sides are
      * identified that's certain: the same room or not. Until then it goes by [wasJoined] or blocks
