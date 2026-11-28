@@ -30,4 +30,17 @@ object SkyblockItems {
         val name = TextUtils.stripFormatting(stack.hoverName.string)
         return name.contains(SPIRIT_LEAP_NAME, ignoreCase = true) || name.contains("Infinileap", ignoreCase = true)
     }
+
+    private const val ETHERWARP_CONDUIT_ID = "ETHERWARP_CONDUIT"
+
+    /** The Etherwarp Conduit, which etherwarps on any right-click, sneaking or not. */
+    fun isEtherwarpConduit(stack: ItemStack): Boolean = skyblockId(stack) == ETHERWARP_CONDUIT_ID
+
+    /** An item that etherwarps when right-clicked while sneaking: one with Etherwarp merged into it
+     * (an Aspect of the Void, usually), or the Etherwarp Conduit - the same check Odin makes. */
+    fun canEtherwarp(stack: ItemStack): Boolean {
+        if (isEtherwarpConduit(stack)) return true
+        val data = stack.get(DataComponents.CUSTOM_DATA)?.copyTag() ?: return false
+        return data.getIntOr("ethermerge", 0) == 1
+    }
 }

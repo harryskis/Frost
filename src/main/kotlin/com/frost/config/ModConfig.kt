@@ -197,6 +197,8 @@ data class ModConfigData(
     var mimicMessageEnabled: Boolean = true,
     var princeMessageEnabled: Boolean = true,
     var batMessageEnabled: Boolean = true,
+    // Etherwarp Container Fix - see com.frost.qol.EtherwarpContainerFix.
+    var etherwarpContainerFixEnabled: Boolean = false,
     // Chat Regex - see com.frost.qol.ChatRegex. Each rule matches chat lines and shows text on
     // screen and/or plays a sound.
     var chatRegexEnabled: Boolean = false,
@@ -569,6 +571,9 @@ object ModConfig {
 
     fun isBatMessageEnabled(): Boolean = get().batMessageEnabled
     fun setBatMessageEnabled(enabled: Boolean) = update { it.batMessageEnabled = enabled }
+
+    fun isEtherwarpContainerFixEnabled(): Boolean = get().etherwarpContainerFixEnabled
+    fun setEtherwarpContainerFixEnabled(enabled: Boolean) = update { it.etherwarpContainerFixEnabled = enabled }
 
     fun isChatRegexEnabled(): Boolean = get().chatRegexEnabled
     fun setChatRegexEnabled(enabled: Boolean) = update { it.chatRegexEnabled = enabled }

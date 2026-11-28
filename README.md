@@ -102,6 +102,10 @@ column's header to collapse it, or use the search bar at the bottom.
   with **Volume** and **Pitch**. Blank text shows the chat line itself. Turn on **Regex** to
   match with a regular expression, and put its groups in the text as `$1`, `$2`...; `&` color
   codes work in the text too. **Test** shows and plays a rule without waiting for the message.
+- **Etherwarp Container Fix** (`/frost` -> QoL -> Etherwarp Container Fix) - lets you etherwarp
+  onto blocks that do something when right-clicked up close, like crafting tables, hoppers,
+  cauldrons and furnaces, instead of opening or using them. Levers, skulls, chests and buttons
+  still work as normal, for secrets.
 - **Spotify playback control** (`/frost spotify`) - skip, go back, and play/pause Spotify
   from in-game, bindable to any key via the Keybinds screen. Requires Spotify Premium (a
   Spotify platform requirement for playback control, not a mod limitation).

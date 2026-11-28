@@ -275,6 +275,13 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                     listOf(ActionSetting("Edit Keybinds", "Add, change or remove key bindings.") { open(KeybindsScreen(this)) }),
                 ),
                 chatRegexFeature(),
+                GuiFeature(
+                    "Etherwarp Container Fix",
+                    "Lets you etherwarp onto blocks you'd otherwise open or use when right-clicked up close, like crafting tables, hoppers, cauldrons and furnaces. Levers, skulls, chests and buttons still work as normal, for secrets.",
+                    ModConfig::isEtherwarpContainerFixEnabled,
+                    ModConfig::setEtherwarpContainerFixEnabled,
+                    emptyList(),
+                ),
             ),
         ),
         GuiPanel(

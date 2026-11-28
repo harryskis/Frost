@@ -5,6 +5,7 @@
   "client": [
     "ClientPacketListenerMixin",
     "LocalPlayerAccessor",
+    "MinecraftMixin",
     "MultiPlayerGameModeMixin"
   ],
   "injectors": {
