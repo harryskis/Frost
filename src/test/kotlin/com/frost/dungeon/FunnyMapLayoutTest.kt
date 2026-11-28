@@ -666,6 +666,17 @@ class FunnyMapLayoutTest {
     }
 
     @Test
+    fun `a centered L room labels between its two side-by-side tiles, with both their width`() {
+        val bottomRow = setOf(GridPos(1, 1), GridPos(0, 1), GridPos(1, 0))
+        assertEquals(1.0 to 1.5, FunnyMapLayout.labelCenter(bottomRow, centeredL = true))
+        val topRow = setOf(GridPos(3, 2), GridPos(4, 2), GridPos(4, 3))
+        assertEquals(4.0 to 2.5, FunnyMapLayout.labelCenter(topRow, centeredL = true))
+        assertEquals(FunnyMapLayout.CELL_SIZE * 2 + FunnyMapLayout.GAP_SIZE, FunnyMapLayout.labelWidth(topRow, centeredL = true))
+        // Rectangles are the same either way.
+        assertEquals(1.0 to 0.5, FunnyMapLayout.labelCenter(setOf(a, b), centeredL = true))
+    }
+
+    @Test
     fun `opening any tile of a room opens all of it, and only that room`() {
         val crypt = room("Crypt")
         val rooms = mapOf(a to crypt, b to crypt, GridPos(3, 3) to room("Mines"))

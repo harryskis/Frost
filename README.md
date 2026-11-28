@@ -35,8 +35,9 @@ column's header to collapse it, or use the search bar at the bottom.
   toggles it; right-click opens its menu: **Edit Map** to drag it around (hold it and scroll to
   resize), **Map Style** to draw it as Frost's own map or like NoammAddons' (**NA**), Odin's
   or LegitCatMod's (**LCM**), each with that mod's colors, borders, doors, checkmarks and
-  heads, in Legit and Funny alike, **NA Room Text** for what the NA style writes on rooms
-  (checkmarks, secrets, names, or names and secrets, as NoammAddons' own setting), **Show
+  heads, in Legit and Funny alike, **NA Text** for what the NA style writes on rooms
+  (checkmarks, secrets, names, or names and secrets, as NoammAddons' own setting), **L Room
+  Names** to put an L-shaped room's name between its two side-by-side tiles or on its corner, **Show
   Princes** for a crown on each room a prince can be in (Big Red Flag, Chambers, Doors, Flags,
   Grass Ruin, Leaves, Market, Pirate, Quartz Knight, Red Blue, Skull, Sloth, Supertall,
   Waterfall and Withermancer), in the room's **Top Left** corner or **Center**ed behind its

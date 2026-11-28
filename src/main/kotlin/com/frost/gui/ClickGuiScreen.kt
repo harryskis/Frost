@@ -395,11 +395,18 @@ class ClickGuiScreen : Screen(Component.literal("Frost")) {
                     { ModConfig.setMapStyle(MapStyle.entries[it]) },
                 ),
                 SelectorSetting(
-                    "NA Room Text",
-                    "What the NA style writes on rooms, as NoammAddons' own Checkmark Style setting: checkmarks, secrets, names, or names and secrets.",
+                    "NA Text",
+                    "What the NA style writes on rooms, as NoammAddons' own Checkmark Style setting: checkmarks, secrets, room names, names and secrets, or secrets with puzzle names.",
                     NaRoomText.entries.map { it.label },
                     { ModConfig.getNaRoomText().ordinal },
                     { ModConfig.setNaRoomText(NaRoomText.entries[it]) },
+                ),
+                ChoiceSetting(
+                    "L Room Names",
+                    "Where an L-shaped room's name goes. Centered puts it between the two tiles side by side. Corner puts it on the tile where the L turns.",
+                    listOf("Centered", "Corner"),
+                    { if (ModConfig.isLRoomLabelCentered()) 0 else 1 },
+                    { ModConfig.setLRoomLabelCentered(it == 0) },
                 ),
                 DropdownSetting(
                     "Show Princes",

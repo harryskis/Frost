@@ -115,6 +115,8 @@ data class ModConfigData(
     var hidePrincesOnKill: Boolean = true,
     var princeIconCenter: Boolean = false,
     var princeIconSize: Int = DEFAULT_MAP_ELEMENT_SIZE,
+    // Where an L-shaped room's name goes: between its two side-by-side tiles, or on its corner.
+    var lRoomLabelCentered: Boolean = true,
     // What the NA style writes on rooms, by com.frost.gui.map.NaRoomText name.
     var naRoomText: String = NaRoomText.NAME_AND_SECRETS.name,
     // Draws the route from the entrance to the blood door on Funny Map.
@@ -676,6 +678,9 @@ object ModConfig {
 
     fun isPrinceIconCenter(): Boolean = get().princeIconCenter
     fun setPrinceIconCenter(center: Boolean) = update { it.princeIconCenter = center }
+
+    fun isLRoomLabelCentered(): Boolean = get().lRoomLabelCentered
+    fun setLRoomLabelCentered(centered: Boolean) = update { it.lRoomLabelCentered = centered }
 
     fun getNaRoomText(): NaRoomText = NaRoomText.fromName(get().naRoomText)
     fun setNaRoomText(text: NaRoomText) = update { it.naRoomText = text.name }

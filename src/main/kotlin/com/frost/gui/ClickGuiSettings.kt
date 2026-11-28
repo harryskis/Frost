@@ -102,6 +102,35 @@ abstract class GuiSetting(val name: String, val description: String) {
     protected fun drawLabel(frame: GuiFrame, indent: Int = 0, rowHeight: Int = height, text: String = name) {
         frame.context.text(frame.font, text, x + ClickGuiLayout.PADDING + indent, y + (rowHeight - 8) / 2, ClickGuiColors.TEXT, false)
     }
+
+    /**
+     * A value right-aligned to [right] beside the label. If it's too wide for the room the label
+     * leaves, it's drawn smaller to fit, and cut short with "..." only past that.
+     */
+    protected fun drawValue(frame: GuiFrame, text: String, right: Int, rowHeight: Int, color: Int) {
+        val font = frame.font
+        val textWidth = font.width(text)
+        val available = right - (x + ClickGuiLayout.PADDING + font.width(name) + VALUE_GAP)
+        if (textWidth <= available) {
+            frame.context.text(font, text, right - textWidth, y + (rowHeight - 8) / 2, color, false)
+            return
+        }
+        val scale = (available.toFloat() / textWidth).coerceAtLeast(MIN_VALUE_SCALE)
+        val shown = if (textWidth * scale <= available) text
+        else font.plainSubstrByWidth(text, (available / scale).toInt() - font.width(ELLIPSIS)) + ELLIPSIS
+        val pose = frame.context.pose()
+        pose.pushMatrix()
+        pose.translate(right - font.width(shown) * scale, y + rowHeight / 2f - 4 * scale)
+        pose.scale(scale, scale)
+        frame.context.text(font, shown, 0, 0, color, false)
+        pose.popMatrix()
+    }
+
+    private companion object {
+        const val VALUE_GAP = 6
+        const val MIN_VALUE_SCALE = 0.75f
+        const val ELLIPSIS = "..."
+    }
 }
 
 /** A text label with an on/off switch. The whole row is the click target. */
@@ -600,8 +629,7 @@ class ChoiceSetting(
         drawLabel(frame)
         val choice = choices[getter()]
         val hovered = isOver(frame.mouseX.toDouble(), frame.mouseY.toDouble())
-        val left = x + width - ClickGuiLayout.PADDING - frame.font.width(choice)
-        frame.context.text(frame.font, choice, left, y + (height - 8) / 2, if (hovered) ClickGuiColors.TEXT else ClickGuiColors.TEXT_DIM, false)
+        drawValue(frame, choice, x + width - ClickGuiLayout.PADDING, height, if (hovered) ClickGuiColors.TEXT else ClickGuiColors.TEXT_DIM)
     }
 
     override fun mouseClicked(event: MouseButtonEvent, screen: ClickGuiScreen): Boolean {
@@ -640,8 +668,7 @@ class SelectorSetting(
         drawChevron(context, chevronX, y + ClickGuiLayout.ROW_HEIGHT / 2 - 1, open, ClickGuiColors.TEXT_DIM)
         val current = choices[getter().coerceIn(choices.indices)]
         val headerHovered = isOver(frame.mouseX.toDouble(), frame.mouseY.toDouble()) && frame.mouseY < y + ClickGuiLayout.ROW_HEIGHT
-        val currentLeft = chevronX - CHEVRON_GAP - frame.font.width(current)
-        context.text(frame.font, current, currentLeft, y + (ClickGuiLayout.ROW_HEIGHT - 8) / 2, if (headerHovered) ClickGuiColors.TEXT else ClickGuiColors.TEXT_DIM, false)
+        drawValue(frame, current, chevronX - CHEVRON_GAP, ClickGuiLayout.ROW_HEIGHT, if (headerHovered) ClickGuiColors.TEXT else ClickGuiColors.TEXT_DIM)
 
         if (anim.value <= 0f) return
         val top = y + ClickGuiLayout.ROW_HEIGHT

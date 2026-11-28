@@ -267,9 +267,10 @@ object FunnyMapLayout {
     /**
      * Where to center a room's label, in tile units (a tile's center is its index + 0.5).
      * Rectangles use their true middle. An L's middle falls outside the room, on empty space,
-     * so it uses whichever of its own tiles is closest to that point instead - its corner.
+     * so it goes either between the two tiles of its row of two ([centeredL]) or on whichever of
+     * its own tiles is closest to that point - its corner.
      */
-    fun labelCenter(tiles: Set<GridPos>): Pair<Double, Double> {
+    fun labelCenter(tiles: Set<GridPos>, centeredL: Boolean = false): Pair<Double, Double> {
         val minX = tiles.minOf { it.x }
         val maxX = tiles.maxOf { it.x }
         val minZ = tiles.minOf { it.z }
@@ -277,18 +278,24 @@ object FunnyMapLayout {
         val middleX = (minX + maxX + 1) / 2.0
         val middleZ = (minZ + maxZ + 1) / 2.0
         if (tiles.size == (maxX - minX + 1) * (maxZ - minZ + 1)) return middleX to middleZ
+        if (centeredL) lRow(tiles)?.let { row -> return (row.minOf { it.x } + row.maxOf { it.x } + 1) / 2.0 to row.first().z + 0.5 }
         val averageX = tiles.map { it.x + 0.5 }.average()
         val averageZ = tiles.map { it.z + 0.5 }.average()
         val corner = tiles.minBy { (it.x + 0.5 - averageX) * (it.x + 0.5 - averageX) + (it.z + 0.5 - averageZ) * (it.z + 0.5 - averageZ) }
         return corner.x + 0.5 to corner.z + 0.5
     }
 
-    /** How wide a room's label may be, in GUI pixels: its full span for a rectangle, or just
-     * the corner cell it's centered on for an L. */
-    fun labelWidth(tiles: Set<GridPos>): Int {
+    /** The two tiles of an L that sit side by side in one row, or null if [tiles] isn't an L. */
+    private fun lRow(tiles: Set<GridPos>): List<GridPos>? =
+        tiles.groupBy { it.z }.values.singleOrNull { it.size == 2 }?.takeIf { tiles.size == 3 }
+
+    /** How wide a room's label may be, in GUI pixels: its full span for a rectangle, its row
+     * of two for a [centeredL] L, or just the corner cell it's centered on otherwise. */
+    fun labelWidth(tiles: Set<GridPos>, centeredL: Boolean = false): Int {
         val spanX = tiles.maxOf { it.x } - tiles.minOf { it.x } + 1
         val spanZ = tiles.maxOf { it.z } - tiles.minOf { it.z } + 1
-        return if (tiles.size == spanX * spanZ) spanX * TILE_PITCH - GAP_SIZE else CELL_SIZE
+        if (tiles.size == spanX * spanZ) return spanX * TILE_PITCH - GAP_SIZE
+        return if (centeredL && lRow(tiles) != null) 2 * TILE_PITCH - GAP_SIZE else CELL_SIZE
     }
 
     /** The text size for a label whose longest line is [textWidth] wide at full size: as big

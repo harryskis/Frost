@@ -63,6 +63,7 @@ object FunnyMapRenderer {
         hidePrincesOnKill = ModConfig.isHidePrincesOnKillEnabled(),
         princeIconCenter = ModConfig.isPrinceIconCenter(),
         princeIconSize = ModConfig.getPrinceIconSize() / PERCENT,
+        lRoomLabelCentered = ModConfig.isLRoomLabelCentered(),
     )
 
     /** The map's on-screen width at [scale]. */

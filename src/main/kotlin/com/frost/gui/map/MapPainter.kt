@@ -26,6 +26,7 @@ data class MapPaintOptions(
     val hidePrincesOnKill: Boolean = true,
     val princeIconCenter: Boolean = false,
     val princeIconSize: Float = 1f,
+    val lRoomLabelCentered: Boolean = true,
 ) {
     fun showsName(roomType: String): Boolean = roomType !in hiddenNameTypes
 }
@@ -35,8 +36,8 @@ enum class NaRoomText(val label: String) {
     CHECKMARKS("Checkmarks"),
     SECRETS("Secrets"),
     ROOM_NAME("Room Name"),
-    NAME_AND_SECRETS("Room Name + Secrets"),
-    SECRETS_AND_PUZZLE_NAME("Secrets + Puzzle Name"),
+    NAME_AND_SECRETS("Name + Secrets"),
+    SECRETS_AND_PUZZLE_NAME("Secrets + Puzzle"),
     ;
 
     companion object {
@@ -149,7 +150,7 @@ internal abstract class StylePainter(val style: MapStyle) {
         for ((room, tiles) in FunnyMapLayout.groupRooms(map.rooms)) {
             if (!RoomDatabase.hasPrince(room)) continue
             if (options.princeIconCenter) {
-                val (centerX, centerY) = labelCenter(tiles)
+                val (centerX, centerY) = labelCenter(tiles, options)
                 canvas.crown(centerX - width / 2, centerY - height / 2, scale)
             } else {
                 // The room's top row, then its leftmost tile there - an L's corner can be empty.
@@ -258,8 +259,8 @@ internal abstract class StylePainter(val style: MapStyle) {
     }
 
     /** Where to center a room's label, in map pixels - see [FunnyMapLayout.labelCenter]. */
-    protected fun labelCenter(tiles: Set<GridPos>): Pair<Float, Float> {
-        val (x, z) = FunnyMapLayout.labelCenter(tiles)
+    protected fun labelCenter(tiles: Set<GridPos>, options: MapPaintOptions): Pair<Float, Float> {
+        val (x, z) = FunnyMapLayout.labelCenter(tiles, options.lRoomLabelCentered)
         return geometry.tileUnitsToMap(x).toFloat() to geometry.tileUnitsToMap(z).toFloat()
     }
 
@@ -372,11 +373,11 @@ internal object FrostPainter : StylePainter(MapStyle.FROST) {
             if (lines.isEmpty()) continue
             val scale = FunnyMapLayout.labelScale(
                 lines.maxOf { canvas.textWidth(it.first) },
-                FunnyMapLayout.labelWidth(tiles),
+                FunnyMapLayout.labelWidth(tiles, options.lRoomLabelCentered),
                 options.limitRoomNames,
                 options.textSize,
             )
-            val (centerX, centerY) = labelCenter(tiles)
+            val (centerX, centerY) = labelCenter(tiles, options)
             drawLines(canvas, lines, centerX, centerY, scale)
         }
     }
@@ -477,7 +478,7 @@ internal object OdinPainter : StylePainter(MapStyle.ODIN) {
             val found = if (checkmark == MapCheckmark.GREEN) room.secrets.toString() else map.foundSecrets[room]?.toString() ?: "?"
             val secrets = if (room.secrets > 0) " $found/${room.secrets}" else ""
             val lines = "${room.name}$secrets".trim().split(' ').map { it to color }
-            val (centerX, centerY) = labelCenter(tiles)
+            val (centerX, centerY) = labelCenter(tiles, options)
             drawLines(canvas, lines, centerX, centerY, TEXT_SCALE * options.textSize)
         }
         for (tile in hints) {
@@ -570,7 +571,7 @@ internal object NaPainter : StylePainter(MapStyle.NA) {
         for ((room, tiles) in FunnyMapLayout.groupRooms(map.rooms)) {
             if (room.type == "ENTRANCE" || room.type == "FAIRY") continue
             val opened = isOpened(tiles, map)
-            val (x, z) = labelCenter(tiles)
+            val (x, z) = labelCenter(tiles, options)
             val mode = when (options.naRoomText) {
                 NaRoomText.SECRETS_AND_PUZZLE_NAME -> if (room.type == "PUZZLE" || room.secrets == 0) NaRoomText.ROOM_NAME else NaRoomText.SECRETS
                 else -> options.naRoomText
@@ -698,7 +699,7 @@ internal object LcmPainter : StylePainter(MapStyle.LCM) {
             if (room.type in NO_TEXT_TYPES) continue
             val opened = isOpened(tiles, map)
             val checkmark = map.checkmarks[room]
-            val (centerX, centerY) = labelCenter(tiles)
+            val (centerX, centerY) = labelCenter(tiles, options)
             if (!options.showsName(room.type)) {
                 val icon = checkmarkIcon(checkmark)?.takeIf { opened } ?: continue
                 drawIcon(canvas, icon, centerX, centerY, ICON_SIZE * options.textSize)
